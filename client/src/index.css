@@ -73,7 +73,7 @@
 
 @layer utilities {
   .drag-over {
-    @apply border-primary bg-primary-50 transition-colors;
+    @apply border-primary bg-blue-50 transition-colors;
   }
   
   .processing-spinner {

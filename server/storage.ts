@@ -68,8 +68,16 @@ export class MemStorage implements IStorage {
   async createDocument(insertDocument: InsertDocument): Promise<Document> {
     const id = this.currentDocumentId++;
     const document: Document = {
-      ...insertDocument,
       id,
+      title: insertDocument.title,
+      originalName: insertDocument.originalName,
+      fileType: insertDocument.fileType,
+      fileSize: insertDocument.fileSize,
+      filePath: insertDocument.filePath,
+      extractedText: insertDocument.extractedText || null,
+      categories: insertDocument.categories || [],
+      tags: insertDocument.tags || [],
+      processingStatus: insertDocument.processingStatus ?? "pending",
       uploadDate: new Date(),
       processedDate: null,
     };
@@ -98,19 +106,19 @@ export class MemStorage implements IStorage {
       results = results.filter(doc => 
         doc.title.toLowerCase().includes(query) ||
         doc.extractedText?.toLowerCase().includes(query) ||
-        doc.tags.some(tag => tag.toLowerCase().includes(query))
+        (doc.tags || []).some(tag => tag.toLowerCase().includes(query))
       );
     }
 
     if (params.categories && params.categories.length > 0) {
       results = results.filter(doc => 
-        doc.categories.some(cat => params.categories!.includes(cat))
+        (doc.categories || []).some(cat => params.categories!.includes(cat))
       );
     }
 
     if (params.tags && params.tags.length > 0) {
       results = results.filter(doc => 
-        doc.tags.some(tag => params.tags!.includes(tag))
+        (doc.tags || []).some(tag => params.tags!.includes(tag))
       );
     }
 
@@ -156,7 +164,7 @@ export class MemStorage implements IStorage {
     // Update document counts
     for (const category of categories) {
       const count = Array.from(this.documents.values()).filter(doc => 
-        doc.categories.includes(category.name)
+        (doc.categories || []).includes(category.name)
       ).length;
       category.documentCount = count;
     }

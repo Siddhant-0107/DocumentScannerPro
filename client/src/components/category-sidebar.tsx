@@ -36,7 +36,7 @@ export default function CategorySidebar({ onCategoryFilter }: CategorySidebarPro
         </CardHeader>
         <CardContent className="space-y-3">
           <Button 
-            className="w-full justify-start bg-primary-50 text-primary hover:bg-primary-100"
+            className="w-full justify-start bg-blue-50 text-primary hover:bg-blue-100"
             variant="ghost"
           >
             <Plus className="mr-3" size={16} />
