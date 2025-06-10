@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import AdvancedSearchModal from "./advanced-search-modal";
 import { type SearchParams } from "@shared/schema";
 
 interface SearchBarProps {
@@ -63,9 +64,15 @@ export default function SearchBar({ searchParams, onSearchParamsChange }: Search
           <CardTitle className="text-lg font-semibold text-gray-900">
             Search Documents
           </CardTitle>
-          <Button variant="ghost" className="text-primary hover:text-primary-600 text-sm font-medium">
-            Advanced Search
-          </Button>
+          <AdvancedSearchModal
+            searchParams={searchParams}
+            onSearchParamsChange={onSearchParamsChange}
+            trigger={
+              <Button variant="ghost" className="text-primary hover:text-primary-600 text-sm font-medium">
+                Advanced Search
+              </Button>
+            }
+          />
         </div>
       </CardHeader>
       <CardContent>

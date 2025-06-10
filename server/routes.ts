@@ -168,6 +168,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.patch("/api/categories/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const updates = req.body;
+      const category = await storage.updateCategory(id, updates);
+      
+      if (!category) {
+        return res.status(404).json({ message: "Category not found" });
+      }
+      
+      res.json(category);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to update category" });
+    }
+  });
+
+  app.delete("/api/categories/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const success = await storage.deleteCategory(id);
+      
+      if (!success) {
+        return res.status(404).json({ message: "Category not found" });
+      }
+      
+      res.json({ message: "Category deleted successfully" });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to delete category" });
+    }
+  });
+
   // File serving route
   app.get("/api/files/:filename", (req, res) => {
     const filename = req.params.filename;

@@ -2,6 +2,8 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Plus, FolderPlus, Download } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import CategoryManagementModal from "./category-management-modal";
+import { useToast } from "@/hooks/use-toast";
 import { type Category } from "@shared/schema";
 
 interface CategorySidebarProps {

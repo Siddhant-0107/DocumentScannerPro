@@ -1,9 +1,13 @@
 import { useState } from "react";
-import { X, Plus } from "lucide-react";
+import { X, Plus, Tag, Edit2, Download, Copy } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Input } from "@/components/ui/input";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest } from "@/lib/queryClient";
 import { type Document } from "@shared/schema";
 
 interface DocumentPreviewModalProps {
@@ -13,10 +17,64 @@ interface DocumentPreviewModalProps {
 
 export default function DocumentPreviewModal({ document, onClose }: DocumentPreviewModalProps) {
   const [isOpen, setIsOpen] = useState(true);
+  const [isEditingTitle, setIsEditingTitle] = useState(false);
+  const [newTitle, setNewTitle] = useState(document.title);
+  const [newTag, setNewTag] = useState("");
+  const [isAddingTag, setIsAddingTag] = useState(false);
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  const updateDocumentMutation = useMutation({
+    mutationFn: (updates: Partial<Document>) => 
+      apiRequest("PATCH", `/api/documents/${document.id}`, updates),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/documents"] });
+      toast({
+        title: "Document updated",
+        description: "Document has been successfully updated.",
+      });
+    },
+  });
 
   const handleClose = () => {
     setIsOpen(false);
     onClose();
+  };
+
+  const handleTitleSave = () => {
+    if (newTitle.trim() && newTitle !== document.title) {
+      updateDocumentMutation.mutate({ title: newTitle.trim() });
+    }
+    setIsEditingTitle(false);
+  };
+
+  const handleAddTag = () => {
+    if (newTag.trim() && !document.tags.includes(newTag.trim())) {
+      const updatedTags = [...document.tags, newTag.trim()];
+      updateDocumentMutation.mutate({ tags: updatedTags });
+      setNewTag("");
+    }
+    setIsAddingTag(false);
+  };
+
+  const handleRemoveTag = (tagToRemove: string) => {
+    const updatedTags = document.tags.filter(tag => tag !== tagToRemove);
+    updateDocumentMutation.mutate({ tags: updatedTags });
+  };
+
+  const handleCopyText = () => {
+    if (document.extractedText) {
+      navigator.clipboard.writeText(document.extractedText);
+      toast({
+        title: "Text copied",
+        description: "Extracted text has been copied to clipboard.",
+      });
+    }
+  };
+
+  const handleDownload = () => {
+    const filename = document.filePath.split('/').pop();
+    window.open(`/api/files/${filename}`, '_blank');
   };
 
   const formatDate = (dateString: string) => {
