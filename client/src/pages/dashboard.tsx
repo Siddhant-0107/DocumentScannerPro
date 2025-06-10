@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { ScanText, Bell } from "lucide-react";
+import { Link, useLocation } from "wouter";
 import FileUpload from "@/components/file-upload";
 import DocumentList from "@/components/document-list";
 import DocumentPreviewModal from "@/components/document-preview-modal";
@@ -16,15 +17,18 @@ export default function Dashboard() {
   const [searchParams, setSearchParams] = useState<SearchParams>({});
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
       {/* Navigation Header */}
-      <header className="bg-white shadow-sm border-b border-gray-200">
+      <header className="bg-white/80 backdrop-blur-md shadow-sm border-b border-gray-200/50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center">
               <div className="flex-shrink-0 flex items-center">
-                <ScanText className="text-primary text-2xl mr-3" size={24} />
-                <h1 className="text-xl font-bold text-gray-900">DocScan Pro</h1>
+                <div className="relative">
+                  <ScanText className="text-blue-600 text-2xl mr-3 pulse-glow" size={24} />
+                  <div className="absolute -top-1 -right-1 w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                </div>
+                <h1 className="text-xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">DocScan Pro</h1>
               </div>
             </div>
             <nav className="hidden md:flex space-x-8">

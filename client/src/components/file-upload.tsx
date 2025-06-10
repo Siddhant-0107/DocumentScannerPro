@@ -179,18 +179,19 @@ export default function FileUpload() {
   };
 
   return (
-    <Card className="shadow-card">
-      <CardHeader>
-        <CardTitle className="text-lg font-semibold text-gray-900">
+    <Card className="shadow-card hover-lift bg-gradient-to-br from-white to-blue-50/30 border-0 overflow-hidden">
+      <CardHeader className="bg-gradient-to-r from-blue-600/5 to-purple-600/5 border-b border-blue-100/50">
+        <CardTitle className="text-lg font-semibold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent flex items-center gap-2">
+          <CloudUpload size={20} className="text-blue-600" />
           Upload Documents
         </CardTitle>
       </CardHeader>
-      <CardContent>
+      <CardContent className="p-6">
         {/* Upload Area */}
         <div
           {...getRootProps()}
-          className={`border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-primary hover:bg-primary-50 transition-colors cursor-pointer ${
-            isDragActive ? "drag-over" : ""
+          className={`border-2 border-dashed border-blue-200 rounded-xl p-8 text-center hover:border-blue-400 hover:bg-blue-50/50 transition-all duration-300 cursor-pointer group relative overflow-hidden ${
+            isDragActive ? "drag-over border-blue-500 bg-blue-100/50 scale-[1.02]" : ""
           }`}
         >
           <input {...getInputProps()} />
