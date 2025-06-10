@@ -31,19 +31,15 @@ export default function Dashboard() {
                 <h1 className="text-xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">DocScan Pro</h1>
               </div>
             </div>
-            <nav className="hidden md:flex space-x-8">
-              <Button variant="ghost" className="text-primary font-medium">
+            <nav className="hidden md:flex space-x-2">
+              <Button variant="ghost" className="text-blue-600 font-medium bg-blue-50/50 hover:bg-blue-100/50 rounded-lg">
                 Dashboard
               </Button>
-              <Button variant="ghost" className="text-gray-500 hover:text-gray-700 font-medium">
-                Documents
-              </Button>
-              <Button variant="ghost" className="text-gray-500 hover:text-gray-700 font-medium">
-                Categories
-              </Button>
-              <Button variant="ghost" className="text-gray-500 hover:text-gray-700 font-medium">
-                Settings
-              </Button>
+              <Link href="/analytics">
+                <Button variant="ghost" className="text-gray-500 hover:text-blue-600 hover:bg-blue-50/50 transition-all duration-200 rounded-lg">
+                  Analytics
+                </Button>
+              </Link>
             </nav>
             <div className="flex items-center space-x-4">
               <Button variant="ghost" size="icon" className="relative">

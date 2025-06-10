@@ -117,10 +117,11 @@ export default function DocumentList({ searchParams, onDocumentSelect }: Documen
   }
 
   return (
-    <Card className="shadow-card">
-      <CardHeader>
+    <Card className="shadow-card hover-lift bg-gradient-to-br from-white to-slate-50/30 border-0 overflow-hidden">
+      <CardHeader className="bg-gradient-to-r from-slate-50/50 to-blue-50/30 border-b border-slate-100/50">
         <div className="flex items-center justify-between">
-          <CardTitle className="text-lg font-semibold text-gray-900">
+          <CardTitle className="text-lg font-semibold bg-gradient-to-r from-slate-700 to-blue-700 bg-clip-text text-transparent flex items-center gap-2">
+            <FileText size={20} className="text-slate-600" />
             Recent Documents
           </CardTitle>
           <div className="flex gap-2">
