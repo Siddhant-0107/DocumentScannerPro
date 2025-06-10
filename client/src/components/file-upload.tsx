@@ -1,0 +1,244 @@
+import { useState, useCallback } from "react";
+import { useDropzone } from "react-dropzone";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { CloudUpload, Plus, FileImage, FileText, CheckCircle } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Progress } from "@/components/ui/progress";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest } from "@/lib/queryClient";
+import { processOCR } from "@/lib/ocr";
+
+interface UploadProgress {
+  file: File;
+  progress: number;
+  status: "uploading" | "processing" | "completed" | "error";
+  documentId?: number;
+}
+
+export default function FileUpload() {
+  const [uploadProgress, setUploadProgress] = useState<UploadProgress[]>([]);
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  const uploadMutation = useMutation({
+    mutationFn: async (files: File[]) => {
+      const formData = new FormData();
+      files.forEach((file) => formData.append("files", file));
+      
+      const response = await apiRequest("POST", "/api/documents/upload", formData);
+      return response.json();
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/documents"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/documents/stats"] });
+      
+      // Start OCR processing for uploaded documents
+      data.documents.forEach((doc: any, index: number) => {
+        const file = uploadProgress[index]?.file;
+        if (file) {
+          processDocument(doc.id, file);
+        }
+      });
+
+      toast({
+        title: "Upload successful",
+        description: `${data.documents.length} document(s) uploaded and processing started.`,
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Upload failed",
+        description: "Failed to upload documents. Please try again.",
+        variant: "destructive",
+      });
+      
+      setUploadProgress(prev => 
+        prev.map(item => ({ ...item, status: "error" as const }))
+      );
+    },
+  });
+
+  const processDocument = async (documentId: number, file: File) => {
+    try {
+      // Update status to processing
+      setUploadProgress(prev => 
+        prev.map(item => 
+          item.file === file 
+            ? { ...item, status: "processing", documentId }
+            : item
+        )
+      );
+
+      // Update document status in backend
+      await apiRequest("PATCH", `/api/documents/${documentId}`, {
+        processingStatus: "processing"
+      });
+
+      // Process OCR
+      const extractedText = await processOCR(file);
+
+      // Update document with extracted text
+      await apiRequest("PATCH", `/api/documents/${documentId}`, {
+        extractedText,
+        processingStatus: "completed",
+        processedDate: new Date().toISOString(),
+      });
+
+      // Update progress to completed
+      setUploadProgress(prev => 
+        prev.map(item => 
+          item.file === file 
+            ? { ...item, status: "completed", progress: 100 }
+            : item
+        )
+      );
+
+      queryClient.invalidateQueries({ queryKey: ["/api/documents"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/documents/stats"] });
+
+    } catch (error) {
+      console.error("OCR processing failed:", error);
+      
+      // Update document status to failed
+      await apiRequest("PATCH", `/api/documents/${documentId}`, {
+        processingStatus: "failed"
+      });
+
+      setUploadProgress(prev => 
+        prev.map(item => 
+          item.file === file 
+            ? { ...item, status: "error" }
+            : item
+        )
+      );
+
+      toast({
+        title: "Processing failed",
+        description: "Failed to extract text from document.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const onDrop = useCallback((acceptedFiles: File[]) => {
+    // Initialize progress tracking
+    const newProgress = acceptedFiles.map(file => ({
+      file,
+      progress: 0,
+      status: "uploading" as const,
+    }));
+    
+    setUploadProgress(newProgress);
+
+    // Simulate upload progress
+    newProgress.forEach((item, index) => {
+      const interval = setInterval(() => {
+        setUploadProgress(prev => 
+          prev.map((p, i) => 
+            i === index && p.status === "uploading"
+              ? { ...p, progress: Math.min(p.progress + 10, 90) }
+              : p
+          )
+        );
+      }, 200);
+
+      setTimeout(() => clearInterval(interval), 1800);
+    });
+
+    // Start upload
+    uploadMutation.mutate(acceptedFiles);
+  }, [uploadMutation]);
+
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+    onDrop,
+    accept: {
+      'image/png': ['.png'],
+      'image/jpeg': ['.jpg', '.jpeg'],
+      'application/pdf': ['.pdf'],
+    },
+    maxSize: 10 * 1024 * 1024, // 10MB
+  });
+
+  const getFileIcon = (file: File) => {
+    if (file.type.startsWith('image/')) {
+      return <FileImage className="text-primary text-xl" />;
+    }
+    return <FileText className="text-red-500 text-xl" />;
+  };
+
+  const getStatusIcon = (status: UploadProgress['status']) => {
+    switch (status) {
+      case "completed":
+        return <CheckCircle className="text-green-500" size={20} />;
+      case "processing":
+        return <div className="processing-spinner text-primary"><CheckCircle size={20} /></div>;
+      default:
+        return null;
+    }
+  };
+
+  return (
+    <Card className="shadow-card">
+      <CardHeader>
+        <CardTitle className="text-lg font-semibold text-gray-900">
+          Upload Documents
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        {/* Upload Area */}
+        <div
+          {...getRootProps()}
+          className={`border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-primary hover:bg-primary-50 transition-colors cursor-pointer ${
+            isDragActive ? "drag-over" : ""
+          }`}
+        >
+          <input {...getInputProps()} />
+          <CloudUpload className="mx-auto text-4xl text-gray-400 mb-4" size={48} />
+          <p className="text-lg font-medium text-gray-900 mb-2">
+            Drop files here or click to upload
+          </p>
+          <p className="text-sm text-gray-500 mb-4">
+            Supports PNG, JPG, PDF files up to 10MB
+          </p>
+          <Button className="bg-primary hover:bg-primary-600">
+            <Plus className="mr-2" size={16} />
+            Choose Files
+          </Button>
+        </div>
+
+        {/* Upload Progress */}
+        {uploadProgress.length > 0 && (
+          <div className="mt-6 space-y-3">
+            {uploadProgress.map((item, index) => (
+              <div key={index} className="flex items-center p-3 bg-gray-50 rounded-md fade-in">
+                {getFileIcon(item.file)}
+                <div className="flex-1 ml-3">
+                  <p className="text-sm font-medium text-gray-900">
+                    {item.file.name}
+                  </p>
+                  <Progress 
+                    value={item.progress} 
+                    className="mt-1 h-2"
+                  />
+                  {item.status === "processing" && (
+                    <p className="text-xs text-gray-500 mt-1">Processing OCR...</p>
+                  )}
+                  {item.status === "completed" && (
+                    <p className="text-xs text-green-600 mt-1">Processing complete</p>
+                  )}
+                  {item.status === "error" && (
+                    <p className="text-xs text-red-600 mt-1">Processing failed</p>
+                  )}
+                </div>
+                <div className="ml-3">
+                  {getStatusIcon(item.status)}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
