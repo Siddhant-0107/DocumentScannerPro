@@ -152,6 +152,22 @@
   .pulse-glow {
     animation: pulseGlow 2s ease-in-out infinite alternate;
   }
+  
+  .shimmer {
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+    animation: shimmer 2s infinite;
+  }
+  
+  .aurora {
+    background: linear-gradient(45deg, 
+      hsl(250, 95%, 65%) 0%, 
+      hsl(260, 100%, 55%) 25%, 
+      hsl(270, 85%, 70%) 50%, 
+      hsl(235, 85%, 65%) 75%, 
+      hsl(250, 95%, 65%) 100%);
+    background-size: 400% 400%;
+    animation: aurora 8s ease-in-out infinite;
+  }
 }
 
 @keyframes spin {
@@ -170,6 +186,18 @@
 }
 
 @keyframes pulseGlow {
-  from { box-shadow: 0 0 5px rgba(59, 130, 246, 0.4); }
-  to { box-shadow: 0 0 20px rgba(59, 130, 246, 0.6), 0 0 30px rgba(59, 130, 246, 0.3); }
+  from { box-shadow: 0 0 5px rgba(147, 51, 234, 0.4); }
+  to { box-shadow: 0 0 20px rgba(147, 51, 234, 0.6), 0 0 30px rgba(147, 51, 234, 0.3); }
+}
+
+@keyframes shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+@keyframes aurora {
+  0%, 100% { background-position: 0% 50%; }
+  25% { background-position: 100% 50%; }
+  50% { background-position: 100% 100%; }
+  75% { background-position: 0% 100%; }
 }
