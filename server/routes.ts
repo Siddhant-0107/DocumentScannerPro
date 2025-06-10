@@ -17,7 +17,7 @@ const upload = multer({
   limits: {
     fileSize: 10 * 1024 * 1024, // 10MB limit
   },
-  fileFilter: (req, file, cb) => {
+  fileFilter: (req: any, file: any, cb: any) => {
     const allowedTypes = ['image/png', 'image/jpeg', 'image/jpg', 'application/pdf'];
     if (allowedTypes.includes(file.mimetype)) {
       cb(null, true);
@@ -38,6 +38,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get("/api/documents/stats", async (req, res) => {
+    try {
+      const stats = await storage.getDocumentStats();
+      res.json(stats);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch stats" });
+    }
+  });
+
   app.get("/api/documents/:id", async (req, res) => {
     try {
       const id = parseInt(req.params.id);
@@ -53,7 +62,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/documents/upload", upload.array("files"), async (req, res) => {
+  app.post("/api/documents/upload", upload.array("files"), async (req: any, res) => {
     try {
       if (!req.files || !Array.isArray(req.files)) {
         return res.status(400).json({ message: "No files uploaded" });
@@ -136,15 +145,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(documents);
     } catch (error) {
       res.status(500).json({ message: "Failed to search documents" });
-    }
-  });
-
-  app.get("/api/documents/stats", async (req, res) => {
-    try {
-      const stats = await storage.getDocumentStats();
-      res.json(stats);
-    } catch (error) {
-      res.status(500).json({ message: "Failed to fetch stats" });
     }
   });
 
