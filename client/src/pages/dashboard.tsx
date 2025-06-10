@@ -17,7 +17,7 @@ export default function Dashboard() {
   const [searchParams, setSearchParams] = useState<SearchParams>({});
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
+    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-violet-50/50 to-indigo-100/80">
       {/* Navigation Header */}
       <header className="bg-white/80 backdrop-blur-md shadow-sm border-b border-gray-200/50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -25,18 +25,18 @@ export default function Dashboard() {
             <div className="flex items-center">
               <div className="flex-shrink-0 flex items-center">
                 <div className="relative">
-                  <ScanText className="text-blue-600 text-2xl mr-3 pulse-glow" size={24} />
-                  <div className="absolute -top-1 -right-1 w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                  <ScanText className="text-purple-600 text-2xl mr-3 pulse-glow" size={24} />
+                  <div className="absolute -top-1 -right-1 w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div>
                 </div>
-                <h1 className="text-xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">DocScan Pro</h1>
+                <h1 className="text-xl font-bold bg-gradient-to-r from-purple-600 via-violet-600 to-indigo-600 bg-clip-text text-transparent">DocScan Pro</h1>
               </div>
             </div>
             <nav className="hidden md:flex space-x-2">
-              <Button variant="ghost" className="text-blue-600 font-medium bg-blue-50/50 hover:bg-blue-100/50 rounded-lg">
+              <Button variant="ghost" className="text-purple-600 font-medium bg-purple-50/60 hover:bg-purple-100/60 rounded-lg">
                 Dashboard
               </Button>
               <Link href="/analytics">
-                <Button variant="ghost" className="text-gray-500 hover:text-blue-600 hover:bg-blue-50/50 transition-all duration-200 rounded-lg">
+                <Button variant="ghost" className="text-gray-500 hover:text-purple-600 hover:bg-purple-50/50 transition-all duration-200 rounded-lg">
                   Analytics
                 </Button>
               </Link>

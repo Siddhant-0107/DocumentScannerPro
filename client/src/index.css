@@ -3,45 +3,59 @@
 @tailwind utilities;
 
 :root {
-  --background: linear-gradient(135deg, hsl(220, 13%, 97%) 0%, hsl(210, 20%, 95%) 100%);
-  --foreground: hsl(222, 84%, 5%);
-  --muted: hsl(210, 40%, 98%);
-  --muted-foreground: hsl(215, 16%, 47%);
+  --background: linear-gradient(135deg, hsl(220, 20%, 97%) 0%, hsl(230, 25%, 95%) 100%);
+  --foreground: hsl(230, 20%, 8%);
+  --muted: hsl(220, 30%, 98%);
+  --muted-foreground: hsl(225, 20%, 45%);
   --popover: hsl(0, 0%, 100%);
-  --popover-foreground: hsl(222, 84%, 5%);
+  --popover-foreground: hsl(230, 20%, 8%);
   --card: hsl(0, 0%, 100%);
-  --card-foreground: hsl(222, 84%, 5%);
-  --border: hsl(214, 32%, 91%);
-  --input: hsl(214, 32%, 91%);
-  --primary: linear-gradient(135deg, hsl(217, 91%, 60%) 0%, hsl(212, 100%, 47%) 100%);
-  --primary-foreground: hsl(210, 40%, 98%);
-  --secondary: hsl(210, 40%, 96%);
-  --secondary-foreground: hsl(222, 84%, 5%);
-  --accent: hsl(210, 40%, 96%);
-  --accent-foreground: hsl(222, 84%, 5%);
-  --destructive: hsl(0, 84%, 60%);
-  --destructive-foreground: hsl(210, 40%, 98%);
-  --ring: hsl(217, 91%, 60%);
-  --radius: 0.75rem;
+  --card-foreground: hsl(230, 20%, 8%);
+  --border: hsl(220, 40%, 88%);
+  --input: hsl(220, 40%, 88%);
+  --primary: linear-gradient(135deg, hsl(250, 95%, 65%) 0%, hsl(260, 100%, 55%) 100%);
+  --primary-foreground: hsl(220, 50%, 98%);
+  --secondary: hsl(220, 30%, 94%);
+  --secondary-foreground: hsl(230, 20%, 12%);
+  --accent: hsl(220, 30%, 94%);
+  --accent-foreground: hsl(230, 20%, 12%);
+  --destructive: hsl(350, 90%, 62%);
+  --destructive-foreground: hsl(220, 50%, 98%);
+  --ring: hsl(250, 95%, 65%);
+  --radius: 1rem;
   
-  /* Enhanced color palette */
-  --primary-50: hsl(214, 95%, 93%);
-  --primary-100: hsl(213, 97%, 87%);
-  --primary-500: hsl(217, 91%, 60%);
-  --primary-600: hsl(221, 83%, 53%);
-  --primary-700: hsl(224, 76%, 48%);
-  --success-500: hsl(142, 71%, 45%);
-  --success-600: hsl(142, 69%, 36%);
-  --warning-500: hsl(38, 92%, 50%);
-  --warning-600: hsl(32, 95%, 44%);
-  --error-500: hsl(0, 84%, 60%);
-  --error-600: hsl(0, 72%, 51%);
+  /* Rich color palette */
+  --primary-50: hsl(248, 95%, 95%);
+  --primary-100: hsl(248, 90%, 88%);
+  --primary-200: hsl(248, 85%, 80%);
+  --primary-300: hsl(248, 80%, 70%);
+  --primary-400: hsl(248, 85%, 62%);
+  --primary-500: hsl(250, 95%, 65%);
+  --primary-600: hsl(252, 85%, 58%);
+  --primary-700: hsl(254, 75%, 50%);
+  --primary-800: hsl(256, 70%, 42%);
+  --primary-900: hsl(258, 65%, 35%);
   
-  /* Gradient definitions */
-  --gradient-primary: linear-gradient(135deg, hsl(217, 91%, 60%) 0%, hsl(212, 100%, 47%) 100%);
-  --gradient-success: linear-gradient(135deg, hsl(142, 71%, 45%) 0%, hsl(158, 64%, 52%) 100%);
-  --gradient-warning: linear-gradient(135deg, hsl(38, 92%, 50%) 0%, hsl(25, 95%, 53%) 100%);
-  --gradient-error: linear-gradient(135deg, hsl(0, 84%, 60%) 0%, hsl(15, 85%, 52%) 100%);
+  --indigo-500: hsl(235, 85%, 65%);
+  --indigo-600: hsl(235, 80%, 58%);
+  --violet-500: hsl(270, 85%, 70%);
+  --violet-600: hsl(270, 80%, 62%);
+  
+  --success-500: hsl(150, 75%, 50%);
+  --success-600: hsl(150, 70%, 42%);
+  --warning-500: hsl(35, 90%, 55%);
+  --warning-600: hsl(30, 85%, 48%);
+  --error-500: hsl(350, 90%, 62%);
+  --error-600: hsl(350, 85%, 55%);
+  
+  /* Advanced gradient definitions */
+  --gradient-primary: linear-gradient(135deg, hsl(250, 95%, 65%) 0%, hsl(260, 100%, 55%) 30%, hsl(270, 85%, 70%) 100%);
+  --gradient-secondary: linear-gradient(135deg, hsl(235, 85%, 65%) 0%, hsl(245, 90%, 58%) 100%);
+  --gradient-success: linear-gradient(135deg, hsl(150, 75%, 50%) 0%, hsl(160, 70%, 45%) 50%, hsl(170, 65%, 52%) 100%);
+  --gradient-warning: linear-gradient(135deg, hsl(35, 90%, 55%) 0%, hsl(25, 95%, 50%) 50%, hsl(15, 85%, 58%) 100%);
+  --gradient-error: linear-gradient(135deg, hsl(350, 90%, 62%) 0%, hsl(340, 85%, 58%) 50%, hsl(330, 80%, 65%) 100%);
+  --gradient-surface: linear-gradient(135deg, hsl(0, 0%, 100%) 0%, hsl(220, 30%, 98%) 50%, hsl(240, 25%, 96%) 100%);
+  --gradient-glass: linear-gradient(135deg, rgba(255, 255, 255, 0.9) 0%, rgba(255, 255, 255, 0.7) 50%, rgba(240, 245, 255, 0.8) 100%);
 }
 
 .dark {
