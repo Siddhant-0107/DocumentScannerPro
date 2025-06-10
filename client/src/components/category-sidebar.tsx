@@ -11,9 +11,58 @@ interface CategorySidebarProps {
 }
 
 export default function CategorySidebar({ onCategoryFilter }: CategorySidebarProps) {
+  const { toast } = useToast();
   const { data: categories = [] } = useQuery<Category[]>({
     queryKey: ["/api/categories"],
   });
+
+  const handleExportData = async () => {
+    try {
+      const response = await fetch("/api/documents");
+      const documents = await response.json();
+      
+      const exportData = {
+        exported_at: new Date().toISOString(),
+        total_documents: documents.length,
+        documents: documents.map((doc: any) => ({
+          id: doc.id,
+          title: doc.title,
+          original_name: doc.originalName,
+          file_type: doc.fileType,
+          file_size: doc.fileSize,
+          extracted_text: doc.extractedText,
+          categories: doc.categories,
+          tags: doc.tags,
+          processing_status: doc.processingStatus,
+          upload_date: doc.uploadDate,
+          processed_date: doc.processedDate
+        }))
+      };
+
+      const blob = new Blob([JSON.stringify(exportData, null, 2)], {
+        type: "application/json"
+      });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `documents_export_${new Date().toISOString().split('T')[0]}.json`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      toast({
+        title: "Export successful",
+        description: "Document data has been exported to JSON file.",
+      });
+    } catch (error) {
+      toast({
+        title: "Export failed",
+        description: "Failed to export document data.",
+        variant: "destructive",
+      });
+    }
+  };
 
   const getCategoryColor = (color: string) => {
     // Convert hex to Tailwind classes
@@ -44,16 +93,21 @@ export default function CategorySidebar({ onCategoryFilter }: CategorySidebarPro
             <Plus className="mr-3" size={16} />
             Upload Documents
           </Button>
+          <CategoryManagementModal
+            trigger={
+              <Button 
+                className="w-full justify-start bg-gray-50 text-gray-700 hover:bg-gray-100"
+                variant="ghost"
+              >
+                <FolderPlus className="mr-3" size={16} />
+                Create Category
+              </Button>
+            }
+          />
           <Button 
             className="w-full justify-start bg-gray-50 text-gray-700 hover:bg-gray-100"
             variant="ghost"
-          >
-            <FolderPlus className="mr-3" size={16} />
-            Create Category
-          </Button>
-          <Button 
-            className="w-full justify-start bg-gray-50 text-gray-700 hover:bg-gray-100"
-            variant="ghost"
+            onClick={handleExportData}
           >
             <Download className="mr-3" size={16} />
             Export Data  

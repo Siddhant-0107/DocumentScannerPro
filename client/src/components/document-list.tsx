@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { FileText, FileImage, Eye, Trash2 } from "lucide-react";
+import { FileText, FileImage, Eye, Trash2, CheckSquare } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -7,6 +7,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { type Document, type SearchParams } from "@shared/schema";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
+import BulkActionsModal from "./bulk-actions-modal";
 
 interface DocumentListProps {
   searchParams: SearchParams;
@@ -122,9 +123,19 @@ export default function DocumentList({ searchParams, onDocumentSelect }: Documen
           <CardTitle className="text-lg font-semibold text-gray-900">
             Recent Documents
           </CardTitle>
-          <Button variant="ghost" className="text-primary hover:text-primary-600 text-sm font-medium">
-            View All
-          </Button>
+          <div className="flex gap-2">
+            <BulkActionsModal
+              trigger={
+                <Button variant="ghost" className="text-primary hover:text-primary-600 text-sm font-medium">
+                  <CheckSquare size={16} className="mr-1" />
+                  Bulk Actions
+                </Button>
+              }
+            />
+            <Button variant="ghost" className="text-primary hover:text-primary-600 text-sm font-medium">
+              View All
+            </Button>
+          </div>
         </div>
       </CardHeader>
       <CardContent>
