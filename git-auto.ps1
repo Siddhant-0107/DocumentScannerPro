@@ -9,15 +9,16 @@ if ([string]::IsNullOrWhiteSpace($message)) {
     $message = "${date}: Auto commit"
 }
 
-# Run Git commands
+# Stage all changes
 git add .
 
-# Only commit if there are staged changes
-if (git diff --cached --quiet) {
-    Write-Host "✅ Nothing new to commit. Everything is up-to-date." -ForegroundColor Yellow
-} else {
+# Check if there are staged changes
+$stagedChanges = git diff --cached
+
+if (-not [string]::IsNullOrWhiteSpace($stagedChanges)) {
     git commit -m "$message"
     git push origin main
     Write-Host "✅ Committed & pushed: $message" -ForegroundColor Green
+} else {
+    Write-Host "✅ Nothing new to commit. Everything is up-to-date." -ForegroundColor Yellow
 }
-

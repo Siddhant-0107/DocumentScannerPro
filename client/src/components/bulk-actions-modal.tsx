@@ -264,15 +264,16 @@ export default function BulkActionsModal({ trigger }: BulkActionsModalProps) {
                       {document.title}
                     </p>
                     <p className="text-sm text-gray-500">
-                      {document.categories.length > 0 && (
-                        <span className="mr-2">
-                          Categories: {document.categories.join(", ")}
-                        </span>
-                      )}
-                      {document.tags.length > 0 && (
-                        <span>Tags: {document.tags.join(", ")}</span>
-                      )}
-                    </p>
+  {(document.categories?.length ?? 0)>0 && (
+    <span className="mr-2">
+      Categories: {document.categories?.join(", ")}
+    </span>
+  )}
+  {(document.tags?.length ??0)>0  && (
+    <span>Tags: {document.tags?.join(", ")}</span>
+  )}
+</p>
+
                   </div>
                   <div className="text-xs text-gray-400">
                     {new Date(document.uploadDate).toLocaleDateString()}

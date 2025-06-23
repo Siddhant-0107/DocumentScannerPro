@@ -59,7 +59,8 @@ export default function AdvancedSearchModal({
       <DialogTrigger asChild>
         {trigger}
       </DialogTrigger>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-2xl bg-white/95 backdrop-blur-sm shadow-lg rounded-lg">
+
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Filter size={20} />
