@@ -5,6 +5,8 @@ import path from "path";
 import fs from "fs";
 import { storage } from "./storage";
 import { insertDocumentSchema, searchSchema } from "@shared/schema";
+import express from "express";
+import documentRoutes from './routes/documents';
 
 // Configure multer for file uploads
 const uploadDir = path.join(process.cwd(), "uploads");
@@ -27,12 +29,38 @@ const upload = multer({
   },
 });
 
-export async function registerRoutes(app: Express): Promise<Server> {
+// Add a startup log to confirm server restarts
+export async function registerRoutes(app: express.Express): Promise<Server> {
+  console.log("[DocScanPro] Server started at", new Date().toLocaleString());
+  // Disable ETag and Last-Modified headers globally
+  app.set('etag', false);
+  app.use((req, res, next) => {
+    res.removeHeader('Last-Modified');
+    // Add global cache-control headers for all API responses
+    if (req.path.startsWith('/api/')) {
+      res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
+      res.setHeader("Pragma", "no-cache");
+      res.setHeader("Expires", "0");
+      res.setHeader("Surrogate-Control", "no-store");
+    }
+    next();
+  });
+  // Mount document routes
+  app.use('/api/documents', documentRoutes);
+
   // Document routes
   app.get("/api/documents", async (req, res) => {
     try {
+      // Remove conditional request headers to force 200 response
+      delete req.headers['if-none-match'];
+      delete req.headers['if-modified-since'];
+      // Prevent caching so client always gets latest documents
+      res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
+      res.setHeader("Pragma", "no-cache");
+      res.setHeader("Expires", "0");
+      res.setHeader("Surrogate-Control", "no-store");
       const documents = await storage.getAllDocuments();
-      res.json(documents);
+      res.status(200).json(documents);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch documents" });
     }
@@ -63,6 +91,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   app.post("/api/documents/upload", upload.array("files"), async (req: any, res) => {
+    console.log("Incoming files:", req.files);
+    console.log("Body:", req.body);
     try {
       if (!req.files || !Array.isArray(req.files)) {
         return res.status(400).json({ message: "No files uploaded" });

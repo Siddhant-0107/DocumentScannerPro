@@ -173,7 +173,7 @@ export default function DocumentPreviewModal({ document, onClose }: DocumentPrev
               Categories & Tags
             </h4>
             <div className="flex flex-wrap gap-2 mb-4">
-              {document.categories.map((category) => (
+              {(document.categories ?? []).map((category) => (
                 <Badge 
                   key={category}
                   className="bg-primary-100 text-primary-800"
@@ -181,7 +181,7 @@ export default function DocumentPreviewModal({ document, onClose }: DocumentPrev
                   {category}
                 </Badge>
               ))}
-              {document.tags.map((tag) => (
+              {(document.tags ?? []).map((tag) => (
                 <Badge 
                   key={tag}
                   variant="secondary"

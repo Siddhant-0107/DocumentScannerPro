@@ -22,34 +22,30 @@ export default function FileUpload() {
   const queryClient = useQueryClient();
 
   const uploadMutation = useMutation({
-    mutationFn: async (files: File[]) => {
+    mutationFn: async (file: File) => {
       const formData = new FormData();
-      files.forEach((file) => formData.append("files", file));
-      
-      const response = await apiRequest("POST", "/api/documents/upload", formData);
+      formData.append("file", file);
+      // Add title to the form data, which is required by the backend
+      formData.append("title", file.name.replace(/\.[^/.]+$/, ""));
+
+      const response = await apiRequest("POST", "/api/documents", formData);
       return response.json();
     },
-    onSuccess: (data) => {
+    onSuccess: (data, file) => {
       queryClient.invalidateQueries({ queryKey: ["/api/documents"] });
       queryClient.invalidateQueries({ queryKey: ["/api/documents/stats"] });
       
-      // Start OCR processing for uploaded documents
-      data.documents.forEach((doc: any, index: number) => {
-        const file = uploadProgress[index]?.file;
-        if (file) {
-          processDocument(doc.id, file);
-        }
-      });
+      processDocument(data.id, file);
 
       toast({
         title: "Upload successful",
-        description: `${data.documents.length} document(s) uploaded and processing started.`,
+        description: `"${file.name}" uploaded and processing started.`,
       });
     },
-    onError: (error) => {
+    onError: (error, file) => {
       toast({
         title: "Upload failed",
-        description: "Failed to upload documents. Please try again.",
+        description: `Failed to upload "${file.name}". Please try again.`,
         variant: "destructive",
       });
       
@@ -70,20 +66,28 @@ export default function FileUpload() {
         )
       );
 
-      // Update document status in backend
-      await apiRequest("PATCH", `/api/documents/${documentId}`, {
-        processingStatus: "processing"
-      });
+      // Update document status in backend (processing)
+      const processingUpdate: Record<string, any> = {};
+      processingUpdate.processingStatus = "processing";
+      console.log("PATCH processingUpdate:", processingUpdate);
+      if (Object.keys(processingUpdate).length > 0) {
+        await apiRequest("PATCH", `/api/documents/${documentId}`, processingUpdate);
+      }
 
       // Process OCR
       const extractedText = await processOCR(file);
 
       // Update document with extracted text
-      await apiRequest("PATCH", `/api/documents/${documentId}`, {
-        extractedText,
-        processingStatus: "completed",
-        processedDate: new Date().toISOString(),
-      });
+      console.log("extractedText:", extractedText);
+      const updateData: Record<string, any> = {};
+      if (typeof extractedText === "string" && extractedText.trim().length > 0) {
+        updateData.extractedText = extractedText;
+        updateData.processingStatus = "completed";
+      }
+      console.log("PATCH updateData:", updateData);
+      if (Object.keys(updateData).length > 0) {
+        await apiRequest("PATCH", `/api/documents/${documentId}`, updateData);
+      }
 
       // Update progress to completed
       setUploadProgress(prev => 
@@ -122,32 +126,19 @@ export default function FileUpload() {
   };
 
   const onDrop = useCallback((acceptedFiles: File[]) => {
-    // Initialize progress tracking
+    // Initialize progress tracking for each file
     const newProgress = acceptedFiles.map(file => ({
       file,
       progress: 0,
       status: "uploading" as const,
     }));
     
-    setUploadProgress(newProgress);
+    setUploadProgress(prev => [...prev, ...newProgress]);
 
-    // Simulate upload progress
-    newProgress.forEach((item, index) => {
-      const interval = setInterval(() => {
-        setUploadProgress(prev => 
-          prev.map((p, i) => 
-            i === index && p.status === "uploading"
-              ? { ...p, progress: Math.min(p.progress + 10, 90) }
-              : p
-          )
-        );
-      }, 200);
-
-      setTimeout(() => clearInterval(interval), 1800);
+    // Trigger an upload mutation for each file
+    acceptedFiles.forEach(file => {
+      uploadMutation.mutate(file);
     });
-
-    // Start upload
-    uploadMutation.mutate(acceptedFiles);
   }, [uploadMutation]);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({

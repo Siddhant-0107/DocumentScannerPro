@@ -60,9 +60,9 @@ export default function Dashboard() {
         {/* Dashboard Stats */}
         <DashboardStats />
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           {/* Main Content */}
-          <div className="lg:col-span-2 space-y-6">
+          <div className="md:col-span-2 space-y-6">
             {/* File Upload Section */}
             <FileUpload />
 
@@ -80,7 +80,7 @@ export default function Dashboard() {
           </div>
 
           {/* Sidebar */}
-          <div className="lg:col-span-1 space-y-6">
+          <div className="md:col-span-1 space-y-6">
             <CategorySidebar 
               onCategoryFilter={(category) => 
                 setSearchParams(prev => ({ 

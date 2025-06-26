@@ -1,16 +1,18 @@
 import Tesseract from 'tesseract.js';
 
+
 export async function processOCR(file: File): Promise<string> {
   try {
-    // For PDF files, we would need additional processing
+    console.log("Running OCR on file:", file);
+
     if (file.type === 'application/pdf') {
-      // For now, return a placeholder message
-      // In a real implementation, you would use PDF.js to convert pages to images first
       return "PDF text extraction requires additional processing. Please implement PDF.js integration.";
     }
 
-    // Process image files with Tesseract
-    const result = await Tesseract.recognize(file, 'eng', {
+    // Convert File to Blob URL
+    const imageURL = URL.createObjectURL(file);
+
+    const result = await Tesseract.recognize(imageURL, 'eng', {
       logger: (m) => {
         if (m.status === 'recognizing text') {
           console.log(`OCR Progress: ${Math.round(m.progress * 100)}%`);
@@ -18,9 +20,17 @@ export async function processOCR(file: File): Promise<string> {
       },
     });
 
+    // Clean up blob URL
+    URL.revokeObjectURL(imageURL);
+
     return result.data.text;
-  } catch (error) {
-    console.error('OCR processing failed:', error);
-    throw new Error('Failed to extract text from document');
-  }
+  } 
+    catch (error) {
+  console.error("OCR processing failed:", error);
+  alert("OCR Error: " + error); // TEMP: Remove in prod
+  throw new Error("Failed to extract text from document");
 }
+
+  }
+
+

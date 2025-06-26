@@ -163,7 +163,7 @@ export default function DocumentList({ searchParams, onDocumentSelect }: Documen
                     <span className="ml-1">{getStatusBadge(document.processingStatus)}</span>
                   </p>
                   <div className="flex flex-wrap gap-1 mt-2">
-                    {document.categories.map((category) => (
+                    {(document.categories ?? []).map((category) => (
                       <Badge 
                         key={category}
                         className="bg-primary-100 text-primary-800 text-xs"
@@ -171,7 +171,7 @@ export default function DocumentList({ searchParams, onDocumentSelect }: Documen
                         {category}
                       </Badge>
                     ))}
-                    {document.tags.map((tag) => (
+                    {(document.tags ?? []).map((tag) => (
                       <Badge 
                         key={tag}
                         variant="secondary"
