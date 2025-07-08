@@ -35,7 +35,10 @@ export default function AnalyticsDashboard() {
       });
 
       documents.forEach(doc => {
-        const docDate = new Date(doc.uploadDate).toISOString().split('T')[0];
+        if (!doc.uploadDate) return; // skip if missing
+        const dateObj = new Date(doc.uploadDate);
+        if (isNaN(dateObj.getTime())) return; // skip if invalid date
+        const docDate = dateObj.toISOString().split('T')[0];
         const dayEntry = last30Days.find(day => day.date === docDate);
         if (dayEntry) {
           dayEntry.count++;
@@ -115,7 +118,6 @@ export default function AnalyticsDashboard() {
             </div>
           </CardContent>
         </Card>
-
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
@@ -127,7 +129,6 @@ export default function AnalyticsDashboard() {
             </div>
           </CardContent>
         </Card>
-
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
@@ -139,7 +140,6 @@ export default function AnalyticsDashboard() {
             </div>
           </CardContent>
         </Card>
-
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
@@ -153,159 +153,183 @@ export default function AnalyticsDashboard() {
         </Card>
       </div>
 
-      {/* Charts Row 1 */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Upload Timeline */}
+      {/* Analytics Charts */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Category Distribution */}
         <Card>
           <CardHeader>
-            <CardTitle>Document Uploads (Last 30 Days)</CardTitle>
+            <CardTitle>Categories</CardTitle>
           </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={250}>
-              <LineChart data={analyticsData.timelineData}>
+          <CardContent style={{ minHeight: 260 }}>
+            {analyticsData.categoryData.length > 0 && (
+              <div className="flex flex-wrap gap-2 mb-2">
+                {analyticsData.categoryData.map(cat => (
+                  <Badge key={cat.name} style={{ background: cat.color }}>{cat.name}</Badge>
+                ))}
+              </div>
+            )}
+            <ResponsiveContainer width="100%" height={180}>
+              <PieChart>
+                <Pie
+                  data={analyticsData.categoryData}
+                  dataKey="count"
+                  nameKey="name"
+                  cx="50%"
+                  cy="50%"
+                  outerRadius={60}
+                  label
+                >
+                  {analyticsData.categoryData.map((entry, idx) => (
+                    <Cell key={`cell-${idx}`} fill={entry.color || "#8884d8"} />
+                  ))}
+                </Pie>
+                <Tooltip />
+              </PieChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+
+        {/* Uploads Over Time */}
+        <Card className="col-span-1 md:col-span-2">
+          <CardHeader>
+            <CardTitle>Uploads (Last 30 Days)</CardTitle>
+          </CardHeader>
+          <CardContent style={{ height: 220 }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={analyticsData.timelineData} margin={{ left: 0, right: 0, top: 10, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" />
-                <XAxis 
-                  dataKey="date" 
-                  tickFormatter={(value) => new Date(value).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
-                />
-                <YAxis />
-                <Tooltip 
-                  labelFormatter={(value) => new Date(value).toLocaleDateString()}
-                />
-                <Line type="monotone" dataKey="count" stroke="#3B82F6" strokeWidth={2} />
+                <XAxis dataKey="date" tick={{ fontSize: 10 }} minTickGap={10} />
+                <YAxis allowDecimals={false} />
+                <Tooltip />
+                <Line type="monotone" dataKey="count" stroke="#2563eb" strokeWidth={2} dot={false} />
               </LineChart>
             </ResponsiveContainer>
           </CardContent>
         </Card>
 
-        {/* Category Distribution */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Documents by Category</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={250}>
-              <PieChart>
-                <Pie
-                  data={analyticsData.categoryData}
-                  cx="50%"
-                  cy="50%"
-                  outerRadius={80}
-                  dataKey="count"
-                  label={({ name, count }) => `${name}: ${count}`}
-                >
-                  {analyticsData.categoryData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
-                  ))}
-                </Pie>
-                <Tooltip />
-              </PieChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Charts Row 2 */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Processing Status */}
         <Card>
           <CardHeader>
             <CardTitle>Processing Status</CardTitle>
           </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={250}>
-              <BarChart data={analyticsData.statusData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="name" />
-                <YAxis />
-                <Tooltip />
-                <Bar dataKey="count" fill="#3B82F6">
-                  {analyticsData.statusData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-
-        {/* File Types */}
-        <Card>
-          <CardHeader>
-            <CardTitle>File Type Distribution</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={250}>
+          <CardContent style={{ height: 220 }}>
+            <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
-                  data={analyticsData.fileTypeData}
+                  data={analyticsData.statusData}
+                  dataKey="count"
+                  nameKey="name"
                   cx="50%"
                   cy="50%"
-                  outerRadius={80}
-                  dataKey="count"
-                  label={({ name, count }) => `${name}: ${count}`}
+                  outerRadius={60}
+                  label
                 >
-                  {analyticsData.fileTypeData.map((entry, index) => (
-                    <Cell 
-                      key={`cell-${index}`} 
-                      fill={index === 0 ? "#10B981" : "#EF4444"} 
-                    />
+                  {analyticsData.statusData.map((entry, idx) => (
+                    <Cell key={`cell-status-${idx}`} fill={entry.color} />
                   ))}
                 </Pie>
                 <Tooltip />
               </PieChart>
             </ResponsiveContainer>
+            <div className="flex flex-wrap gap-2 mt-2">
+              {analyticsData.statusData.map(stat => (
+                <Badge key={stat.name} style={{ background: stat.color }}>{stat.name}</Badge>
+              ))}
+            </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Top Tags and Storage Info */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Top Tags */}
+      {/* File Type & Top Tags */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* File Type Distribution */}
         <Card>
           <CardHeader>
-            <CardTitle>Most Used Tags</CardTitle>
+            <CardTitle>File Types</CardTitle>
           </CardHeader>
-          <CardContent>
-            {analyticsData.topTags.length > 0 ? (
-              <div className="space-y-2">
-                {analyticsData.topTags.map(({ tag, count }) => (
-                  <div key={tag} className="flex items-center justify-between">
-                    <Badge variant="secondary">{tag}</Badge>
-                    <span className="text-sm text-gray-500">{count} documents</span>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-gray-500 text-center py-4">No tags found</p>
-            )}
+          <CardContent style={{ height: 220 }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={analyticsData.fileTypeData} margin={{ left: 0, right: 0, top: 10, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="name" />
+                <YAxis allowDecimals={false} />
+                <Tooltip />
+                <Bar dataKey="count" fill="#6366f1" />
+              </BarChart>
+            </ResponsiveContainer>
           </CardContent>
         </Card>
 
-        {/* Storage Statistics */}
+        {/* Top Tags */}
         <Card>
           <CardHeader>
-            <CardTitle>Storage Statistics</CardTitle>
+            <CardTitle>Top Tags</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              <div className="flex justify-between">
-                <span className="text-gray-600">Total Storage:</span>
-                <span className="font-medium">{formatFileSize(analyticsData.storageData.totalSize)}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">Average File Size:</span>
-                <span className="font-medium">{formatFileSize(analyticsData.storageData.averageSize)}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">Largest File:</span>
-                <span className="font-medium">{formatFileSize(analyticsData.storageData.largestFile)}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">Documents Processed:</span>
-                <span className="font-medium">{analyticsData.processingStats.totalProcessed}</span>
-              </div>
+            {analyticsData.topTags.length === 0 ? (
+              <p className="text-gray-400">No tags found.</p>
+            ) : (
+              <ul className="space-y-1">
+                {analyticsData.topTags.map(tag => (
+                  <li key={tag.tag} className="flex items-center gap-2">
+                    <Badge>{tag.tag}</Badge>
+                    <span className="text-xs text-gray-500">{tag.count}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Storage & Processing Details */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <Card>
+          <CardHeader>
+            <CardTitle>Storage Details</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-1">
+              <div>Total: <span className="font-bold">{formatFileSize(analyticsData.storageData.totalSize)}</span></div>
+              <div>Average: <span className="font-bold">{formatFileSize(analyticsData.storageData.averageSize)}</span></div>
+              <div>Largest: <span className="font-bold">{formatFileSize(analyticsData.storageData.largestFile)}</span></div>
             </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle>Processing Details</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-1">
+              <div>Success Rate: <span className="font-bold">{analyticsData.processingStats.successRate.toFixed(1)}%</span></div>
+              <div>Avg. Time: <span className="font-bold">{analyticsData.processingStats.averageProcessingTime}</span></div>
+              <div>Total Processed: <span className="font-bold">{analyticsData.processingStats.totalProcessed}</span></div>
+            </div>
+          </CardContent>
+        </Card>
+        {/* Top Categories Card */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Top Categories</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {analyticsData.categoryData.length === 0 ? (
+              <p className="text-gray-400">No categories found.</p>
+            ) : (
+              <ul className="space-y-1">
+                {analyticsData.categoryData
+                  .slice() // copy array
+                  .sort((a, b) => b.count - a.count)
+                  .slice(0, 5)
+                  .map(cat => (
+                    <li key={cat.name} className="flex items-center gap-2">
+                      <Badge style={{ background: cat.color }}>{cat.name}</Badge>
+                      <span className="text-xs text-gray-500">{cat.count}</span>
+                    </li>
+                  ))}
+              </ul>
+            )}
           </CardContent>
         </Card>
       </div>

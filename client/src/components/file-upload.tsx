@@ -20,23 +20,37 @@ export default function FileUpload() {
   const [uploadProgress, setUploadProgress] = useState<UploadProgress[]>([]);
   const { toast } = useToast();
   const queryClient = useQueryClient();
-
+  const [selectedCategoriesArray, setSelectedCategoriesArray] = useState<string[]>([]);
   const uploadMutation = useMutation({
     mutationFn: async (file: File) => {
       const formData = new FormData();
-      formData.append("file", file);
-      // Add title to the form data, which is required by the backend
+      formData.append("file", file); // use singular 'file' for backend
+      formData.append("categories", JSON.stringify(selectedCategoriesArray));
       formData.append("title", file.name.replace(/\.[^/.]+$/, ""));
-
+      // Use the correct endpoint for multiple files
       const response = await apiRequest("POST", "/api/documents", formData);
-      return response.json();
+      return response; // already parsed JSON
     },
     onSuccess: (data, file) => {
       queryClient.invalidateQueries({ queryKey: ["/api/documents"] });
       queryClient.invalidateQueries({ queryKey: ["/api/documents/stats"] });
-      
-      processDocument(data.id, file);
-
+      // Find the uploaded document by originalName and fileSize for robustness
+      let uploadedDoc = null;
+      if (data.documents?.length === 1) {
+        uploadedDoc = data.documents[0];
+      } else if (data.documents?.length > 1) {
+        uploadedDoc = data.documents.find((doc: any) => doc.originalName === file.name && doc.fileSize === file.size);
+      }
+      console.log("Upload response:", data.documents, "File:", file.name, file.size, "Matched doc:", uploadedDoc);
+      if (uploadedDoc && uploadedDoc.id) {
+        processDocument(uploadedDoc.id, file);
+      } else {
+        toast({
+          title: "Upload failed",
+          description: "Could not find uploaded document for processing.",
+          variant: "destructive",
+        });
+      }
       toast({
         title: "Upload successful",
         description: `"${file.name}" uploaded and processing started.`,

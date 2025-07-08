@@ -64,7 +64,9 @@ export default function Dashboard() {
           {/* Main Content */}
           <div className="md:col-span-2 space-y-6">
             {/* File Upload Section */}
-            <FileUpload />
+            <div id="file-upload-section" tabIndex={-1}>
+              <FileUpload />
+            </div>
 
             {/* Search Section */}
             <SearchBar 

@@ -1,42 +1,43 @@
 import { useQuery } from "@tanstack/react-query";
 import { FileText, Clock, Search, HardDrive } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
-
-interface Stats {
-  totalDocuments: number;
-  processing: number;
-  searchable: number;
-  storageUsed: string;
-}
+import { type Document } from "@shared/schema";
 
 export default function DashboardStats() {
-  const { data: stats } = useQuery<Stats>({
-    queryKey: ["/api/documents/stats"],
+  const { data: documents = [] } = useQuery<Document[]>({
+    queryKey: ["/api/documents"],
   });
+
+  // Calculate stats from documents
+  const totalDocuments = documents.length;
+  const processing = documents.filter((doc) => doc.processingStatus === "processing").length;
+  const searchable = documents.filter((doc) => doc.processingStatus === "completed").length;
+  const totalSize = documents.reduce((sum, doc) => sum + doc.fileSize, 0);
+  const storageUsed = (totalSize / (1024 * 1024)).toFixed(1) + " MB";
 
   const statItems = [
     {
       icon: FileText,
       label: "Total Documents",
-      value: stats?.totalDocuments || 0,
+      value: totalDocuments,
       color: "text-primary",
     },
     {
       icon: Clock,
       label: "Processing",
-      value: stats?.processing || 0,
+      value: processing,
       color: "text-orange-500",
     },
     {
       icon: Search,
       label: "Searchable",
-      value: stats?.searchable || 0,
+      value: searchable,
       color: "text-green-500",
     },
     {
       icon: HardDrive,
       label: "Storage Used",
-      value: stats?.storageUsed || "0 MB",
+      value: storageUsed,
       color: "text-gray-600",
     },
   ];

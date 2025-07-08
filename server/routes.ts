@@ -6,7 +6,6 @@ import fs from "fs";
 import { storage } from "./storage";
 import { insertDocumentSchema, searchSchema } from "@shared/schema";
 import express from "express";
-import documentRoutes from './routes/documents';
 
 // Configure multer for file uploads
 const uploadDir = path.join(process.cwd(), "uploads");
@@ -45,9 +44,6 @@ export async function registerRoutes(app: express.Express): Promise<Server> {
     }
     next();
   });
-  // Mount document routes
-  app.use('/api/documents', documentRoutes);
-
   // Document routes
   app.get("/api/documents", async (req, res) => {
     try {
@@ -59,7 +55,12 @@ export async function registerRoutes(app: express.Express): Promise<Server> {
       res.setHeader("Pragma", "no-cache");
       res.setHeader("Expires", "0");
       res.setHeader("Surrogate-Control", "no-store");
-      const documents = await storage.getAllDocuments();
+      let documents = await storage.getAllDocuments();
+      // Ensure categories is always an array
+      documents = documents.map(doc => ({
+        ...doc,
+        categories: Array.isArray(doc.categories) ? doc.categories : [],
+      }));
       res.status(200).json(documents);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch documents" });
@@ -91,6 +92,34 @@ export async function registerRoutes(app: express.Express): Promise<Server> {
   });
 
   app.post("/api/documents/upload", upload.array("files"), async (req: any, res) => {
+    // Robustly parse categories as array, never null/undefined
+    let categories: string[] = [];
+    try {
+      if (Array.isArray(req.body.categories)) {
+        // If already array (e.g., categories=cat1&categories=cat2)
+        categories = req.body.categories;
+      } else if (typeof req.body.categories === "string") {
+        // Try to parse as JSON array
+        try {
+          const parsed = JSON.parse(req.body.categories);
+          if (Array.isArray(parsed)) {
+            categories = parsed;
+          } else if (typeof parsed === "string") {
+            categories = [parsed];
+          } else {
+            categories = [];
+          }
+        } catch {
+          // If not JSON, treat as single category string
+          categories = req.body.categories ? [req.body.categories] : [];
+        }
+      } else {
+        categories = [];
+      }
+    } catch {
+      categories = [];
+    }
+    console.log("Parsed categories from req.body:", categories);
     console.log("Incoming files:", req.files);
     console.log("Body:", req.body);
     try {
@@ -108,7 +137,7 @@ export async function registerRoutes(app: express.Express): Promise<Server> {
           fileSize: file.size,
           filePath: file.path,
           extractedText: null,
-          categories: [],
+          categories: categories,
           tags: [],
           processingStatus: "pending" as const,
         };
@@ -116,9 +145,11 @@ export async function registerRoutes(app: express.Express): Promise<Server> {
         const validatedData = insertDocumentSchema.parse(documentData);
         const document = await storage.createDocument(validatedData);
         uploadedDocuments.push(document);
+        console.log("Created document:", document); // Log the created document with ID
       }
 
-      res.json({ documents: uploadedDocuments });
+      console.log("All uploaded documents:", uploadedDocuments);
+      res.json({ documents: uploadedDocuments }); // Always return full document objects with IDs
     } catch (error) {
       console.error("Upload error:", error);
       res.status(500).json({ message: "Failed to upload documents" });
@@ -129,13 +160,27 @@ export async function registerRoutes(app: express.Express): Promise<Server> {
     try {
       const id = parseInt(req.params.id);
       const updates = req.body;
-
+      // Always coerce categories to array if present
+      if ('categories' in updates) {
+        if (!Array.isArray(updates.categories)) {
+          if (typeof updates.categories === 'string') {
+            try {
+              const parsed = JSON.parse(updates.categories);
+              updates.categories = Array.isArray(parsed) ? parsed : [parsed];
+            } catch {
+              updates.categories = [updates.categories];
+            }
+          } else {
+            updates.categories = [];
+          }
+        }
+      }
       const document = await storage.updateDocument(id, updates);
-      
       if (!document) {
         return res.status(404).json({ message: "Document not found" });
       }
-      
+      // Ensure categories is always an array in response
+      document.categories = Array.isArray(document.categories) ? document.categories : [];
       res.json(document);
     } catch (error) {
       res.status(500).json({ message: "Failed to update document" });

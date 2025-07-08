@@ -1,4 +1,5 @@
 import Tesseract from 'tesseract.js';
+import { extractTextFromPDF } from './pdfTextExtract';
 
 
 export async function processOCR(file: File): Promise<string> {
@@ -6,7 +7,8 @@ export async function processOCR(file: File): Promise<string> {
     console.log("Running OCR on file:", file);
 
     if (file.type === 'application/pdf') {
-      return "PDF text extraction requires additional processing. Please implement PDF.js integration.";
+      // Use PDF.js to extract text from PDF
+      return extractTextFromPDF(file);
     }
 
     // Convert File to Blob URL

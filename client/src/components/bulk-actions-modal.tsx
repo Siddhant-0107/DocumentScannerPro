@@ -253,7 +253,7 @@ export default function BulkActionsModal({ trigger }: BulkActionsModalProps) {
                     }
                   />
                   <div className="flex-shrink-0">
-                    {document.fileType.startsWith('image/') ? (
+                    {typeof document.fileType === 'string' && document.fileType.startsWith('image/') ? (
                       <div className="text-green-500">📷</div>
                     ) : (
                       <div className="text-red-500">📄</div>

@@ -117,7 +117,7 @@ export default function CategoryManagementModal({ trigger }: CategoryManagementM
           {/* Create New Category */}
           <div className="p-4 border rounded-lg bg-gray-50">
             <h3 className="text-sm font-medium text-gray-900 mb-3">Create New Category</h3>
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-3 gap-3 items-end">
               <div className="col-span-2">
                 <Label htmlFor="new-category-name">Category Name</Label>
                 <Input
@@ -125,6 +125,11 @@ export default function CategoryManagementModal({ trigger }: CategoryManagementM
                   placeholder="Enter category name"
                   value={newCategoryName}
                   onChange={(e) => setNewCategoryName(e.target.value)}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter' && newCategoryName.trim()) {
+                      handleCreateCategory();
+                    }
+                  }}
                 />
               </div>
               <div>
@@ -144,25 +149,44 @@ export default function CategoryManagementModal({ trigger }: CategoryManagementM
                         className="w-6 h-6 rounded border-2 border-gray-300"
                         style={{ backgroundColor: color }}
                         onClick={() => setNewCategoryColor(color)}
+                        type="button"
                       />
                     ))}
                   </div>
                 </div>
               </div>
             </div>
-            <Button 
-              className="mt-3" 
-              onClick={handleCreateCategory}
-              disabled={!newCategoryName.trim() || createCategoryMutation.isPending}
-            >
-              <Plus size={16} className="mr-2" />
-              Create Category
-            </Button>
+            <div className="flex justify-end mt-4">
+              <Button 
+                onClick={handleCreateCategory}
+                disabled={!newCategoryName.trim() || createCategoryMutation.isPending}
+                type="button"
+                className="bg-gray-800 text-white hover:bg-gray-900 transition-colors"
+              >
+                <Plus size={16} className="mr-2" />
+                Create Category
+              </Button>
+            </div>
           </div>
 
           {/* Existing Categories */}
           <div className="space-y-3">
-            <h3 className="text-sm font-medium text-gray-900">Existing Categories</h3>
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-medium text-gray-900">Existing Categories</h3>
+              <Button 
+                size="sm" 
+                variant="outline" 
+                onClick={() => {
+                  // Reset fields and scroll to create section
+                  setNewCategoryName("");
+                  setNewCategoryColor("#3B82F6");
+                  document.getElementById('new-category-name')?.focus();
+                }}
+              >
+                <Plus size={14} className="mr-1" />
+                Create Category
+              </Button>
+            </div>
             <div className="space-y-2 max-h-60 overflow-y-auto">
               {categories.map((category) => (
                 <div key={category.id} className="flex items-center justify-between p-3 border rounded-lg">

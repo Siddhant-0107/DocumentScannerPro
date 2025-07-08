@@ -1,4 +1,5 @@
 import { documents, categories, type Document, type InsertDocument, type Category, type InsertCategory, type SearchParams } from "@shared/schema";
+import { PgStorage } from './pg-storage';
 
 export interface IStorage {
   // Document operations
@@ -201,4 +202,4 @@ export class MemStorage implements IStorage {
   }
 }
 
-export const storage = new MemStorage();
+export const storage = new PgStorage();

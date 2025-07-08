@@ -78,43 +78,6 @@ export default function CategorySidebar({ onCategoryFilter }: CategorySidebarPro
 
   return (
     <div className="space-y-6">
-      {/* Quick Actions */}
-      <Card className="shadow-card">
-        <CardHeader>
-          <CardTitle className="text-lg font-semibold text-gray-900">
-            Quick Actions
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <Button 
-            className="w-full justify-start bg-blue-50 text-primary hover:bg-blue-100"
-            variant="ghost"
-          >
-            <Plus className="mr-3" size={16} />
-            Upload Documents
-          </Button>
-          <CategoryManagementModal
-            trigger={
-              <Button 
-                className="w-full justify-start bg-gray-50 text-gray-700 hover:bg-gray-100"
-                variant="ghost"
-              >
-                <FolderPlus className="mr-3" size={16} />
-                Create Category
-              </Button>
-            }
-          />
-          <Button 
-            className="w-full justify-start bg-gray-50 text-gray-700 hover:bg-gray-100"
-            variant="ghost"
-            onClick={handleExportData}
-          >
-            <Download className="mr-3" size={16} />
-            Export Data  
-          </Button>
-        </CardContent>
-      </Card>
-
       {/* Categories */}
       <Card className="shadow-card">
         <CardHeader>
@@ -147,6 +110,50 @@ export default function CategorySidebar({ onCategoryFilter }: CategorySidebarPro
               </div>
             ))}
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Quick Actions - moved below Categories */}
+      <Card className="shadow-card">
+        <CardHeader>
+          <CardTitle className="text-lg font-semibold text-gray-900">
+            Quick Actions
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <Button 
+            className="w-full justify-start bg-blue-50 text-primary hover:bg-blue-100"
+            variant="ghost"
+            onClick={() => {
+              const el = document.getElementById('file-upload-section');
+              if (el) {
+                el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                el.focus?.();
+              }
+            }}
+          >
+            <Plus className="mr-3" size={16} />
+            Upload Documents
+          </Button>
+          <CategoryManagementModal
+            trigger={
+              <Button 
+                className="w-full justify-start bg-gray-50 text-gray-700 hover:bg-gray-100"
+                variant="ghost"
+              >
+                <FolderPlus className="mr-3" size={16} />
+                Create Category
+              </Button>
+            }
+          />
+          <Button 
+            className="w-full justify-start bg-gray-50 text-gray-700 hover:bg-gray-100"
+            variant="ghost"
+            onClick={handleExportData}
+          >
+            <Download className="mr-3" size={16} />
+            Export Data  
+          </Button>
         </CardContent>
       </Card>
     </div>

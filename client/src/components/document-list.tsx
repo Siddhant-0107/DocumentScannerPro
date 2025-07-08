@@ -8,6 +8,7 @@ import { type Document, type SearchParams } from "@shared/schema";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import BulkActionsModal from "./bulk-actions-modal";
+import { useLocation } from "wouter";
 
 interface DocumentListProps {
   searchParams: SearchParams;
@@ -17,9 +18,12 @@ interface DocumentListProps {
 export default function DocumentList({ searchParams, onDocumentSelect }: DocumentListProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [location, setLocation] = useLocation();
 
   const { data: documents = [], isLoading } = useQuery<Document[]>({
-    queryKey: ["/api/documents", searchParams],
+    queryKey: Object.values(searchParams).some(v => v !== undefined)
+      ? ["/api/documents/search", searchParams]
+      : ["/api/documents"],
     queryFn: async () => {
       if (Object.values(searchParams).some(v => v !== undefined)) {
         const response = await apiRequest("POST", "/api/documents/search", searchParams);
@@ -29,6 +33,7 @@ export default function DocumentList({ searchParams, onDocumentSelect }: Documen
         return response.json();
       }
     },
+    refetchInterval: 5000,
   });
 
   const deleteMutation = useMutation({
@@ -51,8 +56,8 @@ export default function DocumentList({ searchParams, onDocumentSelect }: Documen
     },
   });
 
-  const getFileIcon = (fileType: string) => {
-    if (fileType.startsWith('image/')) {
+  const getFileIcon = (fileType: string | null | undefined) => {
+    if (typeof fileType === 'string' && fileType.startsWith('image/')) {
       return <FileImage className="text-green-500 text-xl" size={20} />;
     }
     return <FileText className="text-red-500 text-xl" size={20} />;
@@ -133,7 +138,11 @@ export default function DocumentList({ searchParams, onDocumentSelect }: Documen
                 </Button>
               }
             />
-            <Button variant="ghost" className="text-primary hover:text-primary-600 text-sm font-medium">
+            <Button
+              variant="ghost"
+              className="text-primary hover:text-primary-600 text-sm font-medium"
+              onClick={() => setLocation("/")}
+            >
               View All
             </Button>
           </div>
@@ -159,7 +168,9 @@ export default function DocumentList({ searchParams, onDocumentSelect }: Documen
                   </p>
                   <p className="text-xs text-gray-500 mt-1">
                     <span>{formatFileSize(document.fileSize)}</span> • 
-                    <span className="ml-1">Uploaded {formatDate(document.uploadDate)}</span> • 
+                    <span className="ml-1">
+                      Uploaded {document.uploadDate ? formatDate(typeof document.uploadDate === "string" ? document.uploadDate : document.uploadDate instanceof Date ? document.uploadDate.toISOString() : "") : "Unknown"}
+                    </span> • 
                     <span className="ml-1">{getStatusBadge(document.processingStatus)}</span>
                   </p>
                   <div className="flex flex-wrap gap-1 mt-2">

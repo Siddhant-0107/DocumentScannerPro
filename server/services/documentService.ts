@@ -5,8 +5,13 @@ import type { InsertDocument } from '../schema';
 export class DocumentService {
   // Create a new document
   static async createDocument(document: InsertDocument) {
+    // Always set uploadDate to now
+    const docWithDate = {
+      ...document,
+      uploadDate: new Date(),
+    };
     const [newDoc] = await db.insert(schema.documents)
-      .values(document)
+      .values(docWithDate)
       .returning();
     return newDoc;
   }
@@ -63,4 +68,4 @@ export class DocumentService {
       .from(schema.documents)
       .where(sql`${schema.documents.tags} && ${tags}`);
   }
-} 
+}
