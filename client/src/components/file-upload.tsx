@@ -24,11 +24,11 @@ export default function FileUpload() {
   const uploadMutation = useMutation({
     mutationFn: async (file: File) => {
       const formData = new FormData();
-      formData.append("file", file); // use singular 'file' for backend
+      formData.append("files", file); // use 'files' to match backend multer.array("files")
       formData.append("categories", JSON.stringify(selectedCategoriesArray));
       formData.append("title", file.name.replace(/\.[^/.]+$/, ""));
       // Use the correct endpoint for multiple files
-      const response = await apiRequest("POST", "/api/documents", formData);
+      const response = await apiRequest("POST", "/api/documents/upload", formData);
       return response; // already parsed JSON
     },
     onSuccess: (data, file) => {

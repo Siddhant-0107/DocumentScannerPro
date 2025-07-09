@@ -3,7 +3,7 @@ import { createServer, type Server } from "http";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
-import { storage } from "./storage";
+import { storage } from "./pg-storage";
 import { insertDocumentSchema, searchSchema } from "@shared/schema";
 import express from "express";
 
@@ -92,14 +92,18 @@ export async function registerRoutes(app: express.Express): Promise<Server> {
   });
 
   app.post("/api/documents/upload", upload.array("files"), async (req: any, res) => {
+    console.log("🚨🚨🚨 UPLOAD ROUTE HIT 🚨🚨🚨");
+    console.log("[UPLOAD START] Upload request received");
+    console.log("[UPLOAD DEBUG] req.files:", req.files);
+    console.log("[UPLOAD DEBUG] req.body:", req.body);
+    console.log("[UPLOAD DEBUG] Files type check:", typeof req.files, Array.isArray(req.files));
+    
     // Robustly parse categories as array, never null/undefined
     let categories: string[] = [];
     try {
       if (Array.isArray(req.body.categories)) {
-        // If already array (e.g., categories=cat1&categories=cat2)
         categories = req.body.categories;
       } else if (typeof req.body.categories === "string") {
-        // Try to parse as JSON array
         try {
           const parsed = JSON.parse(req.body.categories);
           if (Array.isArray(parsed)) {
@@ -110,7 +114,6 @@ export async function registerRoutes(app: express.Express): Promise<Server> {
             categories = [];
           }
         } catch {
-          // If not JSON, treat as single category string
           categories = req.body.categories ? [req.body.categories] : [];
         }
       } else {
@@ -122,14 +125,28 @@ export async function registerRoutes(app: express.Express): Promise<Server> {
     console.log("Parsed categories from req.body:", categories);
     console.log("Incoming files:", req.files);
     console.log("Body:", req.body);
+    
     try {
-      if (!req.files || !Array.isArray(req.files)) {
-        return res.status(400).json({ message: "No files uploaded" });
+      if (!req.files) {
+        console.log("[UPLOAD ERROR] No req.files found");
+        return res.status(400).json({ message: "No files uploaded - req.files is null/undefined" });
+      }
+      
+      if (!Array.isArray(req.files)) {
+        console.log("[UPLOAD ERROR] req.files is not an array:", typeof req.files);
+        return res.status(400).json({ message: "No files uploaded - req.files is not an array" });
+      }
+      
+      if (req.files.length === 0) {
+        console.log("[UPLOAD ERROR] req.files array is empty");
+        return res.status(400).json({ message: "No files uploaded - files array is empty" });
       }
 
+      console.log(`[UPLOAD DEBUG] Processing ${req.files.length} files`);
       const uploadedDocuments = [];
 
       for (const file of req.files) {
+        console.log(`[UPLOAD DEBUG] Processing file:`, file);
         const documentData = {
           title: file.originalname,
           originalName: file.originalname,
@@ -141,18 +158,30 @@ export async function registerRoutes(app: express.Express): Promise<Server> {
           tags: [],
           processingStatus: "pending" as const,
         };
-
-        const validatedData = insertDocumentSchema.parse(documentData);
-        const document = await storage.createDocument(validatedData);
-        uploadedDocuments.push(document);
-        console.log("Created document:", document); // Log the created document with ID
+        console.log("[UPLOAD DEBUG] Document data before validation:", documentData);
+        try {
+          console.log("[UPLOAD DEBUG] Starting validation...");
+          const validatedData = insertDocumentSchema.parse(documentData);
+          console.log("[UPLOAD DEBUG] Validation successful, creating document...");
+          const document = await storage.createDocument(validatedData);
+          console.log("[UPLOAD DEBUG] Document created successfully:", document);
+          uploadedDocuments.push(document);
+          console.log("Created document:", document); // Log the created document with ID
+        } catch (validationError) {
+          console.error("[UPLOAD ERROR] Validation failed:", validationError);
+          console.error("[UPLOAD ERROR] Validation error details:", JSON.stringify(validationError, null, 2));
+          return res.status(400).json({ message: "Validation failed", error: validationError });
+        }
       }
 
       console.log("All uploaded documents:", uploadedDocuments);
+      console.log("[UPLOAD SUCCESS] Sending response with documents");
       res.json({ documents: uploadedDocuments }); // Always return full document objects with IDs
     } catch (error) {
-      console.error("Upload error:", error);
-      res.status(500).json({ message: "Failed to upload documents" });
+      console.error("[UPLOAD ERROR] Upload error:", error);
+      if (error && (error as Error).stack) console.error((error as Error).stack);
+      const errorMessage = (error instanceof Error) ? error.message : String(error);
+      res.status(500).json({ message: "Failed to upload documents", error: errorMessage });
     }
   });
 

@@ -27,28 +27,7 @@ export default function Analytics() {
                 </h1>
               </div>
             </div>
-            <nav className="hidden md:flex space-x-8">
-              <Button variant="ghost" className="text-gray-500 hover:text-gray-700 font-medium">
-                Dashboard
-              </Button>
-              <Button variant="ghost" className="text-gray-500 hover:text-gray-700 font-medium">
-                Documents
-              </Button>
-              <Button variant="ghost" className="text-gray-500 hover:text-gray-700 font-medium">
-                Categories
-              </Button>
-              <Button variant="ghost" className="text-primary font-medium">
-                Analytics
-              </Button>
-              <Button variant="ghost" className="text-gray-500 hover:text-gray-700 font-medium">
-                Settings
-              </Button>
-            </nav>
             <div className="flex items-center space-x-4">
-              <Button variant="ghost" size="icon" className="relative">
-                <Bell className="h-5 w-5" />
-                <span className="absolute top-0 right-0 h-2 w-2 bg-red-500 rounded-full"></span>
-              </Button>
               <Avatar className="h-8 w-8">
                 <AvatarFallback className="bg-primary text-white text-sm font-medium">
                   JD

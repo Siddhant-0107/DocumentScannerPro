@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "tsx server/index.ts",
     "frontend": "vite",
-    "start:all": "concurrently \"npm:dev\" \"npm:frontend\""
+    "worker": "tsx server/server/document-worker.ts",
+    "start:all": "concurrently \"npm:dev\" \"npm:frontend\" \"npm:worker\""
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",

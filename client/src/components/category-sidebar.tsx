@@ -27,15 +27,15 @@ export default function CategorySidebar({ onCategoryFilter }: CategorySidebarPro
         documents: documents.map((doc: any) => ({
           id: doc.id,
           title: doc.title,
-          original_name: doc.originalName,
-          file_type: doc.fileType,
-          file_size: doc.fileSize,
-          extracted_text: doc.extractedText,
+          originalName: doc.originalName,
+          fileType: doc.fileType,
+          fileSize: doc.fileSize,
+          extractedText: doc.extractedText,
           categories: doc.categories,
           tags: doc.tags,
-          processing_status: doc.processingStatus,
-          upload_date: doc.uploadDate,
-          processed_date: doc.processedDate
+          processingStatus: doc.processingStatus,
+          uploadDate: doc.uploadDate,
+          processedDate: doc.processedDate
         }))
       };
 

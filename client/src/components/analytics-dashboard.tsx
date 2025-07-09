@@ -60,7 +60,7 @@ export default function AnalyticsDashboard() {
     fileTypeData: (() => {
       const types: Record<string, number> = {};
       documents.forEach(doc => {
-        const type = doc.fileType.startsWith('image/') ? 'Images' : 'PDFs';
+        const type = (typeof doc.fileType === 'string' && doc.fileType.startsWith('image/')) ? 'Images' : 'PDFs';
         types[type] = (types[type] || 0) + 1;
       });
       return Object.entries(types).map(([name, count]) => ({ name, count }));

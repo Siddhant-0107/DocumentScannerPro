@@ -133,13 +133,13 @@ export default function BulkActionsModal({ trigger }: BulkActionsModalProps) {
       documents: selectedDocs.map(doc => ({
         id: doc.id,
         title: doc.title,
-        original_name: doc.originalName,
-        file_type: doc.fileType,
-        extracted_text: doc.extractedText,
+        originalName: doc.originalName,
+        fileType: doc.fileType,
+        extractedText: doc.extractedText,
         categories: doc.categories,
         tags: doc.tags,
-        processing_status: doc.processingStatus,
-        upload_date: doc.uploadDate,
+        processingStatus: doc.processingStatus,
+        uploadDate: doc.uploadDate,
       }))
     };
 

@@ -12,7 +12,16 @@ export class PgStorage {
     const row = res.rows[0];
     if (!row) return undefined;
     return {
-      ...row,
+      id: row.id,
+      title: row.title,
+      originalName: row.original_name,
+      fileType: row.file_type,
+      fileSize: row.file_size,
+      filePath: row.file_path,
+      extractedText: row.extracted_text,
+      processingStatus: row.processingStatus,
+      uploadDate: row.created_at,
+      processedDate: row.processed_date,
       categories: (() => {
         try {
           if (Array.isArray(row.categories)) return row.categories;
@@ -33,12 +42,11 @@ export class PgStorage {
   async getAllDocuments(): Promise<Document[]> {
     let res;
     try {
-      res = await pool.query('SELECT * FROM documents ORDER BY "uploadDate" DESC');
+      res = await pool.query('SELECT * FROM documents ORDER BY created_at DESC');
     } catch (e) {
       console.error('Error querying documents:', e);
       return [];
     }
-    // Defensive: always return an array
     if (!res.rows || typeof res.rows !== 'object' || typeof res.rows.length !== 'number') return [];
     if (!Array.isArray(res.rows)) return [];
     return Array.from(res.rows).map((row) => {
@@ -55,7 +63,16 @@ export class PgStorage {
           : (typeof row.tags === 'string' ? JSON.parse(row.tags) : []);
       } catch (e) { tags = []; }
       return {
-        ...row,
+        id: row.id,
+        title: row.title,
+        originalName: row.original_name,
+        fileType: row.file_type,
+        fileSize: row.file_size,
+        filePath: row.file_path,
+        extractedText: row.extracted_text,
+        processingStatus: row.processingStatus,
+        uploadDate: row.created_at,
+        processedDate: row.processed_date,
         categories,
         tags,
       };
@@ -64,7 +81,7 @@ export class PgStorage {
 
   async createDocument(doc: InsertDocument): Promise<Document> {
     const res = await pool.query(
-      `INSERT INTO documents (title, "originalName", "fileType", "fileSize", "filePath", "extractedText", categories, tags, "processingStatus", "uploadDate", "processedDate")
+      `INSERT INTO documents (title, original_name, file_type, file_size, file_path, extracted_text, categories, tags, "processingStatus", created_at, processed_date)
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,NOW(),NULL) RETURNING *`,
       [
         doc.title,
@@ -78,7 +95,33 @@ export class PgStorage {
         doc.processingStatus || 'pending',
       ]
     );
-    return res.rows[0];
+    const row = res.rows[0];
+    return {
+      id: row.id,
+      title: row.title,
+      originalName: row.original_name,
+      fileType: row.file_type,
+      fileSize: row.file_size,
+      filePath: row.file_path,
+      extractedText: row.extracted_text,
+      processingStatus: row.processingStatus,
+      uploadDate: row.created_at,
+      processedDate: row.processed_date,
+      categories: (() => {
+        try {
+          if (Array.isArray(row.categories)) return row.categories;
+          if (typeof row.categories === 'string') return JSON.parse(row.categories);
+        } catch (e) { return []; }
+        return [];
+      })(),
+      tags: (() => {
+        try {
+          if (Array.isArray(row.tags)) return row.tags;
+          if (typeof row.tags === 'string') return JSON.parse(row.tags);
+        } catch (e) { return []; }
+        return [];
+      })(),
+    };
   }
 
   async updateDocument(id: number, updates: Partial<Document>): Promise<Document | undefined> {
@@ -89,8 +132,8 @@ export class PgStorage {
       fileSize: 'file_size',
       filePath: 'file_path',
       extractedText: 'extracted_text',
-      processingStatus: 'processing_status',
-      uploadDate: 'upload_date',
+      processingStatus: 'processingStatus',
+      uploadDate: 'created_at',
       processedDate: 'processed_date',
     };
     const fields = [];
@@ -111,7 +154,34 @@ export class PgStorage {
     values.push(id);
     const sql = `UPDATE documents SET ${fields.join(', ')} WHERE id = $${idx} RETURNING *`;
     const res = await pool.query(sql, values);
-    return res.rows[0];
+    const row = res.rows[0];
+    if (!row) return undefined;
+    return {
+      id: row.id,
+      title: row.title,
+      originalName: row.original_name,
+      fileType: row.file_type,
+      fileSize: row.file_size,
+      filePath: row.file_path,
+      extractedText: row.extracted_text,
+      processingStatus: row.processingStatus,
+      uploadDate: row.created_at,
+      processedDate: row.processed_date,
+      categories: (() => {
+        try {
+          if (Array.isArray(row.categories)) return row.categories;
+          if (typeof row.categories === 'string') return JSON.parse(row.categories);
+        } catch (e) { return []; }
+        return [];
+      })(),
+      tags: (() => {
+        try {
+          if (Array.isArray(row.tags)) return row.tags;
+          if (typeof row.tags === 'string') return JSON.parse(row.tags);
+        } catch (e) { return []; }
+        return [];
+      })(),
+    };
   }
 
   async deleteDocument(id: number): Promise<boolean> {
@@ -122,17 +192,25 @@ export class PgStorage {
   async searchDocuments(params: SearchParams): Promise<Document[]> {
     // Simple search by title, tags, categories
     let sql = 'SELECT * FROM documents WHERE 1=1';
-    const values: any[] = [];
-    if (params.query) {
-      sql += ' AND (LOWER(title) LIKE $1 OR LOWER("extractedText") LIKE $1)';
+    const values: any[] = [];      if (params.query) {
+      sql += ' AND (LOWER(title) LIKE $1 OR LOWER(extracted_text) LIKE $1)';
       values.push(`%${params.query.toLowerCase()}%`);
     }
     // Add more filters as needed
-    sql += ' ORDER BY "uploadDate" DESC';
+    sql += ' ORDER BY created_at DESC';
     const res = await pool.query(sql, values);
     // Ensure categories and tags are always arrays
     return res.rows.map((row) => ({
-      ...row,
+      id: row.id,
+      title: row.title,
+      originalName: row.original_name,
+      fileType: row.file_type,
+      fileSize: row.file_size,
+      filePath: row.file_path,
+      extractedText: row.extracted_text,
+      processingStatus: row.processingStatus,
+      uploadDate: row.created_at,
+      processedDate: row.processed_date,
       categories: (() => {
         try {
           if (Array.isArray(row.categories)) return row.categories;
