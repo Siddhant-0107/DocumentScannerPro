@@ -19,6 +19,13 @@ export class PgStorage {
       fileSize: row.file_size,
       filePath: row.file_path,
       extractedText: row.extracted_text,
+      structuredText: (() => {
+        try {
+          return row.structured_text ? 
+            (typeof row.structured_text === 'string' ? JSON.parse(row.structured_text) : row.structured_text) 
+            : null;
+        } catch (e) { return null; }
+      })(),
       processingStatus: row.processingStatus,
       uploadDate: row.created_at,
       processedDate: row.processed_date,
@@ -52,6 +59,7 @@ export class PgStorage {
     return Array.from(res.rows).map((row) => {
       let categories: any[] = [];
       let tags: any[] = [];
+      let structuredText = null;
       try {
         categories = Array.isArray(row.categories)
           ? row.categories
@@ -62,6 +70,11 @@ export class PgStorage {
           ? row.tags
           : (typeof row.tags === 'string' ? JSON.parse(row.tags) : []);
       } catch (e) { tags = []; }
+      try {
+        structuredText = row.structured_text ? 
+          (typeof row.structured_text === 'string' ? JSON.parse(row.structured_text) : row.structured_text) 
+          : null;
+      } catch (e) { structuredText = null; }
       return {
         id: row.id,
         title: row.title,
@@ -70,6 +83,7 @@ export class PgStorage {
         fileSize: row.file_size,
         filePath: row.file_path,
         extractedText: row.extracted_text,
+        structuredText,
         processingStatus: row.processingStatus,
         uploadDate: row.created_at,
         processedDate: row.processed_date,
@@ -90,8 +104,8 @@ export class PgStorage {
         doc.fileSize,
         doc.filePath,
         doc.extractedText,
-        JSON.stringify(doc.categories || []),
-        JSON.stringify(doc.tags || []),
+        doc.categories || [],
+        doc.tags || [],
         doc.processingStatus || 'pending',
       ]
     );
@@ -104,6 +118,13 @@ export class PgStorage {
       fileSize: row.file_size,
       filePath: row.file_path,
       extractedText: row.extracted_text,
+      structuredText: (() => {
+        try {
+          return row.structured_text ? 
+            (typeof row.structured_text === 'string' ? JSON.parse(row.structured_text) : row.structured_text) 
+            : null;
+        } catch (e) { return null; }
+      })(),
       processingStatus: row.processingStatus,
       uploadDate: row.created_at,
       processedDate: row.processed_date,
@@ -132,6 +153,7 @@ export class PgStorage {
       fileSize: 'file_size',
       filePath: 'file_path',
       extractedText: 'extracted_text',
+      structuredText: 'structured_text',
       processingStatus: 'processingStatus',
       uploadDate: 'created_at',
       processedDate: 'processed_date',
@@ -143,7 +165,10 @@ export class PgStorage {
       const dbKey = keyMap[key] || key;
       if (key === 'categories' || key === 'tags') {
         fields.push(`"${dbKey}" = $${idx}`);
-        values.push(JSON.stringify((updates as any)[key] || []));
+        values.push((updates as any)[key] || []);
+      } else if (key === 'structuredText') {
+        fields.push(`"${dbKey}" = $${idx}`);
+        values.push(JSON.stringify((updates as any)[key]));
       } else {
         fields.push(`"${dbKey}" = $${idx}`);
         values.push((updates as any)[key]);
@@ -164,6 +189,13 @@ export class PgStorage {
       fileSize: row.file_size,
       filePath: row.file_path,
       extractedText: row.extracted_text,
+      structuredText: (() => {
+        try {
+          return row.structured_text ? 
+            (typeof row.structured_text === 'string' ? JSON.parse(row.structured_text) : row.structured_text) 
+            : null;
+        } catch (e) { return null; }
+      })(),
       processingStatus: row.processingStatus,
       uploadDate: row.created_at,
       processedDate: row.processed_date,
@@ -190,14 +222,81 @@ export class PgStorage {
   }
 
   async searchDocuments(params: SearchParams): Promise<Document[]> {
-    // Simple search by title, tags, categories
+    // Advanced search with multiple criteria
     let sql = 'SELECT * FROM documents WHERE 1=1';
-    const values: any[] = [];      if (params.query) {
-      sql += ' AND (LOWER(title) LIKE $1 OR LOWER(extracted_text) LIKE $1)';
+    const values: any[] = [];
+    let paramCount = 0;
+
+    // Text search in title, extracted text, and structured text
+    if (params.query && params.query.trim()) {
+      paramCount++;
+      sql += ` AND (
+        LOWER(title) LIKE $${paramCount} OR 
+        LOWER(extracted_text) LIKE $${paramCount} OR
+        LOWER(structured_text::text) LIKE $${paramCount}
+      )`;
       values.push(`%${params.query.toLowerCase()}%`);
     }
-    // Add more filters as needed
+
+    // Category filter (array contains check)
+    if (params.categories && params.categories.length > 0) {
+      paramCount++;
+      sql += ` AND categories && $${paramCount}`;
+      values.push(params.categories);
+    }
+
+    // Tags filter (array contains check)
+    if (params.tags && params.tags.length > 0) {
+      paramCount++;
+      sql += ` AND tags && $${paramCount}`;
+      values.push(params.tags);
+    }
+
+    // Date range filters
+    if (params.dateFrom) {
+      paramCount++;
+      sql += ` AND created_at >= $${paramCount}`;
+      values.push(params.dateFrom);
+    }
+
+    if (params.dateTo) {
+      paramCount++;
+      sql += ` AND created_at <= $${paramCount}`;
+      values.push(params.dateTo + ' 23:59:59'); // Include full day
+    }
+
+    // Document type filter (from structured_text JSON)
+    if (params.documentType && params.documentType !== 'all') {
+      paramCount++;
+      sql += ` AND structured_text->>'documentType' = $${paramCount}`;
+      values.push(params.documentType);
+    }
+
+    // Entity filters (check JSON arrays)
+    if (params.hasEmails) {
+      sql += ` AND jsonb_array_length(COALESCE(structured_text->'entities'->'emails', '[]'::jsonb)) > 0`;
+    }
+
+    if (params.hasPhones) {
+      sql += ` AND jsonb_array_length(COALESCE(structured_text->'entities'->'phones', '[]'::jsonb)) > 0`;
+    }
+
+    if (params.hasAmounts) {
+      sql += ` AND jsonb_array_length(COALESCE(structured_text->'entities'->'amounts', '[]'::jsonb)) > 0`;
+    }
+
+    // Confidence filter
+    if (params.minConfidence && params.minConfidence > 0) {
+      paramCount++;
+      sql += ` AND (structured_text->>'confidence')::numeric >= $${paramCount}`;
+      values.push(params.minConfidence);
+    }
+
     sql += ' ORDER BY created_at DESC';
+    
+    console.log('[PG-STORAGE] Search SQL:', sql);
+    console.log('[PG-STORAGE] Search values:', values);
+    
     const res = await pool.query(sql, values);
     // Ensure categories and tags are always arrays
     return res.rows.map((row) => ({
@@ -208,6 +307,13 @@ export class PgStorage {
       fileSize: row.file_size,
       filePath: row.file_path,
       extractedText: row.extracted_text,
+      structuredText: (() => {
+        try {
+          return row.structured_text ? 
+            (typeof row.structured_text === 'string' ? JSON.parse(row.structured_text) : row.structured_text) 
+            : null;
+        } catch (e) { return null; }
+      })(),
       processingStatus: row.processingStatus,
       uploadDate: row.created_at,
       processedDate: row.processed_date,
@@ -241,8 +347,21 @@ export class PgStorage {
     return res.rows[0];
   }
   async getAllCategories(): Promise<Category[]> {
-    const res = await pool.query('SELECT * FROM categories');
-    return res.rows;
+    const res = await pool.query(`
+      SELECT 
+        c.*,
+        COUNT(d.id) as document_count
+      FROM categories c
+      LEFT JOIN documents d ON d.categories && ARRAY[c.name]
+      GROUP BY c.id, c.name, c.color
+      ORDER BY c.name
+    `);
+    return res.rows.map(row => ({
+      id: row.id,
+      name: row.name,
+      color: row.color,
+      documentCount: parseInt(row.document_count) || 0,
+    }));
   }
   async createCategory(cat: InsertCategory): Promise<Category> {
     const res = await pool.query(

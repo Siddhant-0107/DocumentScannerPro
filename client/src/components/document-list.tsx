@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { FileText, FileImage, Eye, Trash2, CheckSquare } from "lucide-react";
+import { FileText, FileImage, Eye, Trash2, CheckSquare, Mail, Phone, DollarSign } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -99,6 +99,70 @@ export default function DocumentList({ searchParams, onDocumentSelect }: Documen
     }
   };
 
+  const getDocumentTypeBadge = (document: Document) => {
+    if (!document.structuredText?.documentType || document.structuredText.documentType === 'other') {
+      return null;
+    }
+
+    const typeColors = {
+      invoice: 'bg-blue-50 text-blue-700 border-blue-200',
+      receipt: 'bg-green-50 text-green-700 border-green-200',
+      contract: 'bg-purple-50 text-purple-700 border-purple-200',
+      resume: 'bg-orange-50 text-orange-700 border-orange-200',
+      id: 'bg-red-50 text-red-700 border-red-200',
+      report: 'bg-indigo-50 text-indigo-700 border-indigo-200'
+    };
+
+    return (
+      <Badge 
+        variant="outline" 
+        className={`text-xs ${typeColors[document.structuredText.documentType as keyof typeof typeColors]}`}
+      >
+        {document.structuredText.documentType}
+      </Badge>
+    );
+  };
+
+  const getEntityIndicators = (document: Document) => {
+    if (!document.structuredText?.entities) return null;
+
+    const indicators = [];
+    const { entities } = document.structuredText;
+
+    if (entities.emails.length > 0) {
+      indicators.push(
+        <div key="email" className="flex items-center gap-1 text-blue-600">
+          <Mail size={12} />
+          <span className="text-xs">{entities.emails.length}</span>
+        </div>
+      );
+    }
+
+    if (entities.phones.length > 0) {
+      indicators.push(
+        <div key="phone" className="flex items-center gap-1 text-green-600">
+          <Phone size={12} />
+          <span className="text-xs">{entities.phones.length}</span>
+        </div>
+      );
+    }
+
+    if (entities.amounts.length > 0) {
+      indicators.push(
+        <div key="amount" className="flex items-center gap-1 text-orange-600">
+          <DollarSign size={12} />
+          <span className="text-xs">{entities.amounts.length}</span>
+        </div>
+      );
+    }
+
+    return indicators.length > 0 ? (
+      <div className="flex items-center gap-2 mt-1">
+        {indicators}
+      </div>
+    ) : null;
+  };
+
   if (isLoading) {
     return (
       <Card className="shadow-card">
@@ -174,6 +238,7 @@ export default function DocumentList({ searchParams, onDocumentSelect }: Documen
                     <span className="ml-1">{getStatusBadge(document.processingStatus)}</span>
                   </p>
                   <div className="flex flex-wrap gap-1 mt-2">
+                    {getDocumentTypeBadge(document)}
                     {(document.categories ?? []).map((category) => (
                       <Badge 
                         key={category}
@@ -192,6 +257,9 @@ export default function DocumentList({ searchParams, onDocumentSelect }: Documen
                       </Badge>
                     ))}
                   </div>
+                  {getEntityIndicators(document)}
+                  {getDocumentTypeBadge(document)}
+                  {getEntityIndicators(document)}
                 </div>
                 <div className="flex items-center space-x-2 ml-4">
                   <Button

@@ -10,6 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { type Document, type Category } from "@shared/schema";
 import { Checkbox } from "@/components/ui/checkbox";
+import StructuredTextView from "./structured-text-view";
 
 interface DocumentPreviewModalProps {
   document: Document;
@@ -32,6 +33,7 @@ export default function DocumentPreviewModal({ document, onClose }: DocumentPrev
       queryClient.invalidateQueries({ queryKey: ["/api/documents"] });
       queryClient.invalidateQueries({ queryKey: ["/api/documents/stats"] });
       queryClient.invalidateQueries({ queryKey: ["/api/categories"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/document", document.id] }); // Ensure modal and details update
       toast({
         title: "Document updated",
         description: "Document has been successfully updated.",
@@ -183,27 +185,26 @@ export default function DocumentPreviewModal({ document, onClose }: DocumentPrev
                 {saveSuccess ? "Saved!" : "Save Categories"}
               </Button>
             </div>
-            {/* Extracted Text Section */}
-            <h4 className="text-md font-semibold text-gray-900 mb-3">
-              Extracted Text
-            </h4>
-            <ScrollArea className="h-64 mb-6">
-              <div className="text-sm text-gray-700 space-y-2 pr-4">
-                {document.extractedText ? (
-                  document.extractedText.split('\n').map((line, index) => (
-                    <p key={index} className="leading-relaxed">
-                      {line || '\u00A0'}
-                    </p>
-                  ))
-                ) : document.processingStatus === "processing" ? (
-                  <p className="text-gray-500 italic">Processing text extraction...</p>
-                ) : document.processingStatus === "failed" ? (
-                  <p className="text-red-500 italic">Text extraction failed</p>
-                ) : (
-                  <p className="text-gray-500 italic">Text extraction pending</p>
-                )}
-              </div>
-            </ScrollArea>
+            {/* Document Content Section */}
+            <div className="space-y-4">
+              <h4 className="text-md font-semibold text-gray-900">
+                Document Content
+              </h4>
+              <ScrollArea className="max-h-96">
+                <div className="pr-4">
+                  {document.processingStatus === "processing" ? (
+                    <p className="text-gray-500 italic">Processing document...</p>
+                  ) : document.processingStatus === "failed" ? (
+                    <p className="text-red-500 italic">Document processing failed</p>
+                  ) : (
+                    <StructuredTextView 
+                      structuredText={document.structuredText} 
+                      extractedText={document.extractedText}
+                    />
+                  )}
+                </div>
+              </ScrollArea>
+            </div>
           </div>
         </div>
       </DialogContent>

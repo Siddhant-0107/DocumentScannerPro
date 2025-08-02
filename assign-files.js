@@ -53,14 +53,20 @@ async function assignFilesToDocuments() {
     for (const assignment of assignments) {
       if (assignment.file) {
         const filePath = path.join('uploads', assignment.file);
-        
+        // Assign a default category based on file type
+        let category = '';
+        if (assignment.file.endsWith('.png')) category = 'Images';
+        else if (assignment.file.endsWith('.jpg')) category = 'Images';
+        else if (assignment.file.endsWith('.pdf')) category = 'PDFs';
+        else category = 'Other';
+
         await client.query(`
           UPDATE documents 
-          SET file_path = $1, original_name = $2 
-          WHERE id = $3
-        `, [filePath, assignment.file, assignment.docId]);
-        
-        console.log(`  ✓ Document ${assignment.docId} -> ${assignment.file}`);
+          SET file_path = $1, original_name = $2, categories = $3 
+          WHERE id = $4
+        `, [filePath, assignment.file, [category], assignment.docId]);
+
+        console.log(`  ✓ Document ${assignment.docId} -> ${assignment.file} [Category: ${category}]`);
       }
     }
     

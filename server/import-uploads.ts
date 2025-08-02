@@ -29,6 +29,7 @@ async function importUploads() {
       fileSize: stats.size,
       filePath,
       extractedText: null,
+      structuredText: null,
       categories: [],
       tags: [],
       processingStatus: 'pending',

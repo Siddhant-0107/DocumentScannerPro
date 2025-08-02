@@ -1,27 +1,51 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, PieChart, Pie, Cell, LineChart, Line, ResponsiveContainer } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { TrendingUp, Clock, FileText, Tags } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { TrendingUp, Clock, FileText, Tags, RefreshCw } from "lucide-react";
 import { type Document, type Category } from "@shared/schema";
 
 export default function AnalyticsDashboard() {
-  const { data: documents = [] } = useQuery<Document[]>({
+  const queryClient = useQueryClient();
+  
+  const { data: documents = [], refetch: refetchDocuments } = useQuery<Document[]>({
     queryKey: ["/api/documents"],
+    staleTime: 0, // Always fetch fresh data
+    cacheTime: 0, // Don't cache the data
   });
 
-  const { data: categories = [] } = useQuery<Category[]>({
+  const { data: categories = [], refetch: refetchCategories } = useQuery<Category[]>({
     queryKey: ["/api/categories"],
+    staleTime: 0, // Always fetch fresh data
+    cacheTime: 0, // Don't cache the data
   });
+
+  // Debug logging
+  console.log('Analytics Dashboard - Categories:', categories);
+  console.log('Analytics Dashboard - Documents:', documents.length);
+
+  const handleRefresh = async () => {
+    await Promise.all([
+      refetchDocuments(),
+      refetchCategories(),
+      queryClient.invalidateQueries({ queryKey: ["/api/documents"] }),
+      queryClient.invalidateQueries({ queryKey: ["/api/categories"] }),
+    ]);
+  };
 
   // Calculate analytics data
   const analyticsData = {
     // Document counts by category
-    categoryData: categories.map(category => ({
-      name: category.name,
-      count: documents.filter(doc => (doc.categories || []).includes(category.name)).length,
-      color: category.color,
-    })),
+    categoryData: categories.map(category => {
+      const count = documents.filter(doc => (doc.categories || []).includes(category.name)).length;
+      console.log(`Category "${category.name}": ${count} documents`);
+      return {
+        name: category.name,
+        count,
+        color: category.color,
+      };
+    }),
 
     // Documents uploaded over time (last 30 days)
     timelineData: (() => {
@@ -105,6 +129,19 @@ export default function AnalyticsDashboard() {
 
   return (
     <div className="space-y-6">
+      {/* Header with Refresh Button */}
+      <div className="flex justify-between items-center">
+        <div>
+          <p className="text-sm text-gray-500">
+            Showing data for {documents.length} documents and {categories.length} categories
+          </p>
+        </div>
+        <Button onClick={handleRefresh} variant="outline" size="sm">
+          <RefreshCw size={16} className="mr-2" />
+          Refresh Data
+        </Button>
+      </div>
+
       {/* Key Metrics */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card>
@@ -158,34 +195,57 @@ export default function AnalyticsDashboard() {
         {/* Category Distribution */}
         <Card>
           <CardHeader>
-            <CardTitle>Categories</CardTitle>
+            <CardTitle>Categories ({categories.length})</CardTitle>
           </CardHeader>
           <CardContent style={{ minHeight: 260 }}>
-            {analyticsData.categoryData.length > 0 && (
-              <div className="flex flex-wrap gap-2 mb-2">
-                {analyticsData.categoryData.map(cat => (
-                  <Badge key={cat.name} style={{ background: cat.color }}>{cat.name}</Badge>
-                ))}
+            {categories.length === 0 ? (
+              <div className="text-center py-8">
+                <p className="text-gray-400">No categories found</p>
+                <Button onClick={handleRefresh} variant="outline" size="sm" className="mt-2">
+                  <RefreshCw size={14} className="mr-1" />
+                  Refresh
+                </Button>
               </div>
-            )}
-            <ResponsiveContainer width="100%" height={180}>
-              <PieChart>
-                <Pie
-                  data={analyticsData.categoryData}
-                  dataKey="count"
-                  nameKey="name"
-                  cx="50%"
-                  cy="50%"
-                  outerRadius={60}
-                  label
-                >
-                  {analyticsData.categoryData.map((entry, idx) => (
-                    <Cell key={`cell-${idx}`} fill={entry.color || "#8884d8"} />
+            ) : analyticsData.categoryData.length === 0 ? (
+              <div className="text-center py-8">
+                <p className="text-gray-400">Categories exist but no documents are categorized</p>
+                <div className="mt-2 space-y-1">
+                  {categories.map(cat => (
+                    <Badge key={cat.id} style={{ background: cat.color }} className="text-white mr-1">
+                      {cat.name} (0 docs)
+                    </Badge>
                   ))}
-                </Pie>
-                <Tooltip />
-              </PieChart>
-            </ResponsiveContainer>
+                </div>
+              </div>
+            ) : (
+              <>
+                <div className="flex flex-wrap gap-2 mb-2">
+                  {analyticsData.categoryData.map(cat => (
+                    <Badge key={cat.name} style={{ background: cat.color }} className="text-white">
+                      {cat.name} ({cat.count})
+                    </Badge>
+                  ))}
+                </div>
+                <ResponsiveContainer width="100%" height={180}>
+                  <PieChart>
+                    <Pie
+                      data={analyticsData.categoryData}
+                      dataKey="count"
+                      nameKey="name"
+                      cx="50%"
+                      cy="50%"
+                      outerRadius={60}
+                      label
+                    >
+                      {analyticsData.categoryData.map((entry, idx) => (
+                        <Cell key={`cell-${idx}`} fill={entry.color || "#8884d8"} />
+                      ))}
+                    </Pie>
+                    <Tooltip />
+                  </PieChart>
+                </ResponsiveContainer>
+              </>
+            )}
           </CardContent>
         </Card>
 

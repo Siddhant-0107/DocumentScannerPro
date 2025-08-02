@@ -104,18 +104,11 @@ export async function registerRoutes(app: express.Express): Promise<Server> {
       if (Array.isArray(req.body.categories)) {
         categories = req.body.categories;
       } else if (typeof req.body.categories === "string") {
-        try {
-          const parsed = JSON.parse(req.body.categories);
-          if (Array.isArray(parsed)) {
-            categories = parsed;
-          } else if (typeof parsed === "string") {
-            categories = [parsed];
-          } else {
-            categories = [];
-          }
-        } catch {
-          categories = req.body.categories ? [req.body.categories] : [];
-        }
+        // Handle single category as string (not JSON)
+        categories = [req.body.categories];
+      } else if (req.body.categories) {
+        // Handle any other type by converting to string array
+        categories = Array.isArray(req.body.categories) ? req.body.categories : [String(req.body.categories)];
       } else {
         categories = [];
       }
@@ -154,6 +147,7 @@ export async function registerRoutes(app: express.Express): Promise<Server> {
           fileSize: file.size,
           filePath: file.path,
           extractedText: null,
+          structuredText: null,
           categories: categories,
           tags: [],
           processingStatus: "pending" as const,
@@ -242,13 +236,67 @@ export async function registerRoutes(app: express.Express): Promise<Server> {
     }
   });
 
+  // Unified search endpoint using POST for complex queries
   app.post("/api/documents/search", async (req, res) => {
     try {
+      console.log('[SEARCH] POST search request:', req.body);
       const searchParams = searchSchema.parse(req.body);
       const documents = await storage.searchDocuments(searchParams);
+      console.log('[SEARCH] Found documents:', documents.length);
       res.json(documents);
     } catch (error) {
-      res.status(500).json({ message: "Failed to search documents" });
+      console.error('[SEARCH] POST search error:', error);
+      res.status(500).json({ 
+        message: "Failed to search documents",
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
+
+  // Legacy GET search endpoint for simple queries
+  app.get("/api/documents/search", async (req, res) => {
+    try {
+      console.log('[SEARCH] GET search request:', req.query);
+      
+      // Convert query params to SearchParams format
+      const searchParams: any = {};
+      
+      if (req.query.query && typeof req.query.query === 'string') {
+        searchParams.query = req.query.query.trim();
+      }
+      
+      if (req.query.documentType && typeof req.query.documentType === 'string' && req.query.documentType !== 'all') {
+        searchParams.documentType = req.query.documentType;
+      }
+      
+      if (req.query.hasEmails === 'true') {
+        searchParams.hasEmails = true;
+      }
+      
+      if (req.query.hasPhones === 'true') {
+        searchParams.hasPhones = true;
+      }
+      
+      if (req.query.hasAmounts === 'true') {
+        searchParams.hasAmounts = true;
+      }
+      
+      if (req.query.minConfidence && typeof req.query.minConfidence === 'string') {
+        const minConf = parseFloat(req.query.minConfidence);
+        if (!isNaN(minConf)) {
+          searchParams.minConfidence = minConf;
+        }
+      }
+
+      const documents = await storage.searchDocuments(searchParams);
+      console.log('[SEARCH] GET found documents:', documents.length);
+      res.json(documents);
+    } catch (error) {
+      console.error('[SEARCH] GET search error:', error);
+      res.status(500).json({ 
+        message: "Failed to search documents",
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
     }
   });
 

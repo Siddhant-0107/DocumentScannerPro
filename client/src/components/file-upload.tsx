@@ -1,13 +1,17 @@
 import { useState, useCallback } from "react";
 import { useDropzone } from "react-dropzone";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { CloudUpload, Plus, FileImage, FileText, CheckCircle } from "lucide-react";
+import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
+import { CloudUpload, Plus, FileImage, FileText, CheckCircle, Tag } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
+import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { processOCR } from "@/lib/ocr";
+import { type Category } from "@shared/schema";
 
 interface UploadProgress {
   file: File;
@@ -21,11 +25,24 @@ export default function FileUpload() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [selectedCategoriesArray, setSelectedCategoriesArray] = useState<string[]>([]);
+
+  const { data: categories = [] } = useQuery<Category[]>({
+    queryKey: ["/api/categories"],
+  });
+
+  const handleCategoryChange = (categoryName: string, checked: boolean) => {
+    if (checked) {
+      setSelectedCategoriesArray(prev => [...prev, categoryName]);
+    } else {
+      setSelectedCategoriesArray(prev => prev.filter(c => c !== categoryName));
+    }
+  };
   const uploadMutation = useMutation({
     mutationFn: async (file: File) => {
       const formData = new FormData();
       formData.append("files", file); // use 'files' to match backend multer.array("files")
-      formData.append("categories", JSON.stringify(selectedCategoriesArray));
+      // Instead of JSON.stringify, append each category separately for text[]
+      selectedCategoriesArray.forEach(cat => formData.append("categories", cat));
       formData.append("title", file.name.replace(/\.[^/.]+$/, ""));
       // Use the correct endpoint for multiple files
       const response = await apiRequest("POST", "/api/documents/upload", formData);
@@ -192,6 +209,39 @@ export default function FileUpload() {
         </CardTitle>
       </CardHeader>
       <CardContent className="p-6">
+        {/* Category Selection */}
+        {categories.length > 0 && (
+          <div className="mb-6 p-4 border border-purple-200 rounded-lg bg-purple-50/30">
+            <div className="flex items-center gap-2 mb-3">
+              <Tag size={16} className="text-purple-600" />
+              <Label className="text-sm font-medium text-gray-900">
+                Select Categories (Optional)
+              </Label>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {categories.map(category => (
+                <label key={category.id} className="flex items-center gap-2 cursor-pointer">
+                  <Checkbox
+                    checked={selectedCategoriesArray.includes(category.name)}
+                    onCheckedChange={checked => handleCategoryChange(category.name, !!checked)}
+                  />
+                  <Badge 
+                    style={{ backgroundColor: category.color }} 
+                    className="text-white text-xs"
+                  >
+                    {category.name}
+                  </Badge>
+                </label>
+              ))}
+            </div>
+            {selectedCategoriesArray.length > 0 && (
+              <div className="mt-2 text-xs text-gray-600">
+                Selected: {selectedCategoriesArray.join(', ')}
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Upload Area */}
         <div
           {...getRootProps()}

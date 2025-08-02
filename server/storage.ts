@@ -76,6 +76,7 @@ export class MemStorage implements IStorage {
       fileSize: insertDocument.fileSize,
       filePath: insertDocument.filePath,
       extractedText: insertDocument.extractedText || null,
+      structuredText: insertDocument.structuredText || null,
       categories: insertDocument.categories || [],
       tags: insertDocument.tags || [],
       processingStatus: insertDocument.processingStatus ?? "pending",
