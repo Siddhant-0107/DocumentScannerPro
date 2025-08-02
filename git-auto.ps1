@@ -1,4 +1,4 @@
-# Get current date in YYYY-MM-DD format
+bu# Get current date in YYYY-MM-DD format
 $date = Get-Date -Format "yyyy-MM-dd"
 
 # Ask user for optional message
