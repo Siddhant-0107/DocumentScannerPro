@@ -1,7 +1,7 @@
 import { Router } from "express";
-import { storage } from "./pg-storage";
-import { answerQuestion, indexDocument } from "./rag";
-import { searchSchema } from "../shared/schema";
+import { storage } from "./pg-storage.js";
+import { answerQuestion, indexDocument } from "./rag.js";
+import { searchSchema } from "../shared/schema.js";
 
 export const aiRouter = Router();
 
@@ -18,10 +18,13 @@ aiRouter.post("/api/documents/search", async (req, res) => {
 
 aiRouter.post("/api/documents/:id/index", async (req, res) => {
   try {
+    const id = Number.parseInt(req.params.id, 10);
+    if (!Number.isInteger(id)) return res.status(400).json({ message: "Invalid document id" });
     if (!process.env.GEMINI_API_KEY) return res.status(503).json({ message: "GEMINI_API_KEY is not configured" });
-    const document = await storage.getDocument(Number(req.params.id));
+    const document = await storage.getDocument(id);
     if (!document?.extractedText) return res.status(404).json({ message: "Processed document text not found" });
-    res.json({ documentId: document.id, ...(await indexDocument(document.id, document.extractedText)) });
+    const result = await indexDocument(id, document.extractedText);
+    res.json({ documentId: id, ...result });
   } catch (error) {
     res.status(500).json({ message: error instanceof Error ? error.message : "Failed to index document" });
   }
@@ -29,13 +32,17 @@ aiRouter.post("/api/documents/:id/index", async (req, res) => {
 
 aiRouter.post("/api/documents/:id/ask", async (req, res) => {
   try {
+    const id = Number.parseInt(req.params.id, 10);
     const question = typeof req.body?.question === "string" ? req.body.question.trim() : "";
+    if (!Number.isInteger(id)) return res.status(400).json({ message: "Invalid document id" });
     if (!question) return res.status(400).json({ message: "question is required" });
     if (!process.env.GEMINI_API_KEY) return res.status(503).json({ message: "GEMINI_API_KEY is not configured" });
-    const document = await storage.getDocument(Number(req.params.id));
+    const document = await storage.getDocument(id);
     if (!document) return res.status(404).json({ message: "Document not found" });
-    res.json(await answerQuestion(document.id, question));
+    res.json(await answerQuestion(id, question));
   } catch (error) {
     res.status(500).json({ message: error instanceof Error ? error.message : "Failed to answer question" });
   }
 });
+
+export default aiRouter;
