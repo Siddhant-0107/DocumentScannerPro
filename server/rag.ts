@@ -1,28 +1,30 @@
+import "dotenv/config";
 import { aiPool } from "./ai-setup";
 
-const OPENAI_API_URL = "https://api.openai.com/v1";
-const EMBEDDING_MODEL = process.env.EMBEDDING_MODEL || "text-embedding-3-small";
-const CHAT_MODEL = process.env.CHAT_MODEL || "gpt-4o-mini";
+const GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta";
+const EMBEDDING_MODEL = "gemini-embedding-001";
+const CHAT_MODEL = process.env.CHAT_MODEL || "gemini-2.5-flash-lite";
+const EMBEDDING_DIMENSIONS = 1536;
 
 function requireApiKey() {
-  const key = process.env.OPENAI_API_KEY;
-  if (!key) throw new Error("OPENAI_API_KEY is not configured");
+  const key = process.env.GEMINI_API_KEY;
+  if (!key) throw new Error("GEMINI_API_KEY is not configured");
   return key;
 }
 
-async function openAiPost(path: string, body: unknown) {
-  const response = await fetch(`${OPENAI_API_URL}${path}`, {
+async function geminiPost(model: string, method: "embedContent" | "generateContent", body: unknown) {
+  const response = await fetch(`${GEMINI_API_URL}/models/${model}:${method}`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${requireApiKey()}`,
+      "x-goog-api-key": requireApiKey(),
     },
     body: JSON.stringify(body),
   });
 
   if (!response.ok) {
     const message = await response.text();
-    throw new Error(`OpenAI API error (${response.status}): ${message.slice(0, 500)}`);
+    throw new Error(`Gemini API error (${response.status}): ${message.slice(0, 500)}`);
   }
 
   return response.json() as Promise<any>;
@@ -44,12 +46,30 @@ export function chunkText(text: string, chunkSize = 1200, overlap = 200): string
   return chunks;
 }
 
-async function createEmbedding(text: string): Promise<number[]> {
-  const data = await openAiPost("/embeddings", {
-    model: EMBEDDING_MODEL,
-    input: text,
+function normalizeEmbedding(values: number[]): number[] {
+  const norm = Math.sqrt(values.reduce((sum, value) => sum + value * value, 0));
+  return norm > 0 ? values.map((value) => value / norm) : values;
+}
+
+async function createEmbedding(text: string, taskType: "RETRIEVAL_DOCUMENT" | "RETRIEVAL_QUERY"): Promise<number[]> {
+  const data = await geminiPost(EMBEDDING_MODEL, "embedContent", {
+    content: {
+      parts: [{ text }],
+    },
+    embedContentConfig: {
+      taskType,
+      outputDimensionality: EMBEDDING_DIMENSIONS,
+      autoTruncate: true,
+    },
   });
-  return data.data[0].embedding;
+
+  const values = data.embedding?.values;
+  if (!Array.isArray(values) || values.length !== EMBEDDING_DIMENSIONS) {
+    throw new Error(`Gemini embedding returned an unexpected dimension: ${values?.length ?? 0}`);
+  }
+
+  // gemini-embedding-001 requires normalization when using a reduced dimension.
+  return normalizeEmbedding(values);
 }
 
 function vectorLiteral(values: number[]) {
@@ -61,7 +81,7 @@ export async function indexDocument(documentId: number, text: string) {
   await aiPool.query("DELETE FROM document_chunks WHERE document_id = $1", [documentId]);
 
   for (let i = 0; i < chunks.length; i++) {
-    const embedding = await createEmbedding(chunks[i]);
+    const embedding = await createEmbedding(chunks[i], "RETRIEVAL_DOCUMENT");
     await aiPool.query(
       `INSERT INTO document_chunks (document_id, chunk_index, content, embedding)
        VALUES ($1, $2, $3, $4::vector)`,
@@ -73,7 +93,7 @@ export async function indexDocument(documentId: number, text: string) {
 }
 
 export async function answerQuestion(documentId: number, question: string, topK = 4) {
-  const queryEmbedding = await createEmbedding(question);
+  const queryEmbedding = await createEmbedding(question, "RETRIEVAL_QUERY");
   const result = await aiPool.query(
     `SELECT id, document_id, chunk_index, content,
             1 - (embedding <=> $1::vector) AS similarity
@@ -92,24 +112,28 @@ export async function answerQuestion(documentId: number, question: string, topK 
     .map((row) => `[Chunk ${row.chunk_index + 1}]\n${row.content}`)
     .join("\n\n");
 
-  const data = await openAiPost("/chat/completions", {
-    model: CHAT_MODEL,
-    temperature: 0,
-    messages: [
-      {
-        role: "system",
-        content:
-          "You answer questions about an uploaded document. Use only the supplied context. If the answer is not contained in the context, say that the document does not provide enough information. Do not invent facts.",
-      },
+  const data = await geminiPost(CHAT_MODEL, "generateContent", {
+    systemInstruction: {
+      parts: [{
+        text: "You answer questions about an uploaded document. Use only the supplied context. If the answer is not contained in the context, say that the document does not provide enough information. Do not invent facts.",
+      }],
+    },
+    contents: [
       {
         role: "user",
-        content: `Context:\n${context}\n\nQuestion: ${question}`,
+        parts: [{ text: `Context:\n${context}\n\nQuestion: ${question}` }],
       },
     ],
+    generationConfig: {
+      temperature: 0,
+    },
   });
 
   return {
-    answer: data.choices?.[0]?.message?.content?.trim() || "No answer generated.",
+    answer: data.candidates?.[0]?.content?.parts
+      ?.map((part: any) => part.text || "")
+      .join("")
+      .trim() || "No answer generated.",
     sources: result.rows.map((row) => ({
       chunk: row.chunk_index + 1,
       similarity: Number(row.similarity),
