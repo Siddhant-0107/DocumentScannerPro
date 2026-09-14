@@ -1,5 +1,5 @@
 import { Pool } from 'pg';
-import { type Document, type InsertDocument, type Category, type InsertCategory, type SearchParams } from "@shared/schema";
+import { type Document, type InsertDocument, type Category, type InsertCategory, type SearchParams } from "../shared/schema.js";
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL || 'postgres://postgres:12345@localhost:5432/docscanpro',
@@ -21,8 +21,8 @@ export class PgStorage {
       extractedText: row.extracted_text,
       structuredText: (() => {
         try {
-          return row.structured_text ? 
-            (typeof row.structured_text === 'string' ? JSON.parse(row.structured_text) : row.structured_text) 
+          return row.structured_text ?
+            (typeof row.structured_text === 'string' ? JSON.parse(row.structured_text) : row.structured_text)
             : null;
         } catch (e) { return null; }
       })(),
@@ -71,8 +71,8 @@ export class PgStorage {
           : (typeof row.tags === 'string' ? JSON.parse(row.tags) : []);
       } catch (e) { tags = []; }
       try {
-        structuredText = row.structured_text ? 
-          (typeof row.structured_text === 'string' ? JSON.parse(row.structured_text) : row.structured_text) 
+        structuredText = row.structured_text ?
+          (typeof row.structured_text === 'string' ? JSON.parse(row.structured_text) : row.structured_text)
           : null;
       } catch (e) { structuredText = null; }
       return {
@@ -120,8 +120,8 @@ export class PgStorage {
       extractedText: row.extracted_text,
       structuredText: (() => {
         try {
-          return row.structured_text ? 
-            (typeof row.structured_text === 'string' ? JSON.parse(row.structured_text) : row.structured_text) 
+          return row.structured_text ?
+            (typeof row.structured_text === 'string' ? JSON.parse(row.structured_text) : row.structured_text)
             : null;
         } catch (e) { return null; }
       })(),
@@ -146,7 +146,6 @@ export class PgStorage {
   }
 
   async updateDocument(id: number, updates: Partial<Document>): Promise<Document | undefined> {
-    // Map camelCase keys to snake_case for DB columns
     const keyMap: Record<string, string> = {
       originalName: 'original_name',
       fileType: 'file_type',
@@ -191,8 +190,8 @@ export class PgStorage {
       extractedText: row.extracted_text,
       structuredText: (() => {
         try {
-          return row.structured_text ? 
-            (typeof row.structured_text === 'string' ? JSON.parse(row.structured_text) : row.structured_text) 
+          return row.structured_text ?
+            (typeof row.structured_text === 'string' ? JSON.parse(row.structured_text) : row.structured_text)
             : null;
         } catch (e) { return null; }
       })(),
@@ -222,37 +221,32 @@ export class PgStorage {
   }
 
   async searchDocuments(params: SearchParams): Promise<Document[]> {
-    // Advanced search with multiple criteria
     let sql = 'SELECT * FROM documents WHERE 1=1';
     const values: any[] = [];
     let paramCount = 0;
 
-    // Text search in title, extracted text, and structured text
     if (params.query && params.query.trim()) {
       paramCount++;
       sql += ` AND (
-        LOWER(title) LIKE $${paramCount} OR 
+        LOWER(title) LIKE $${paramCount} OR
         LOWER(extracted_text) LIKE $${paramCount} OR
         LOWER(structured_text::text) LIKE $${paramCount}
       )`;
       values.push(`%${params.query.toLowerCase()}%`);
     }
 
-    // Category filter (array contains check)
     if (params.categories && params.categories.length > 0) {
       paramCount++;
       sql += ` AND categories && $${paramCount}`;
       values.push(params.categories);
     }
 
-    // Tags filter (array contains check)
     if (params.tags && params.tags.length > 0) {
       paramCount++;
       sql += ` AND tags && $${paramCount}`;
       values.push(params.tags);
     }
 
-    // Date range filters
     if (params.dateFrom) {
       paramCount++;
       sql += ` AND created_at >= $${paramCount}`;
@@ -262,17 +256,15 @@ export class PgStorage {
     if (params.dateTo) {
       paramCount++;
       sql += ` AND created_at <= $${paramCount}`;
-      values.push(params.dateTo + ' 23:59:59'); // Include full day
+      values.push(params.dateTo + ' 23:59:59');
     }
 
-    // Document type filter (from structured_text JSON)
     if (params.documentType && params.documentType !== 'all') {
       paramCount++;
       sql += ` AND structured_text->>'documentType' = $${paramCount}`;
       values.push(params.documentType);
     }
 
-    // Entity filters (check JSON arrays)
     if (params.hasEmails) {
       sql += ` AND jsonb_array_length(COALESCE(structured_text->'entities'->'emails', '[]'::jsonb)) > 0`;
     }
@@ -285,7 +277,6 @@ export class PgStorage {
       sql += ` AND jsonb_array_length(COALESCE(structured_text->'entities'->'amounts', '[]'::jsonb)) > 0`;
     }
 
-    // Confidence filter
     if (params.minConfidence && params.minConfidence > 0) {
       paramCount++;
       sql += ` AND (structured_text->>'confidence')::numeric >= $${paramCount}`;
@@ -293,12 +284,11 @@ export class PgStorage {
     }
 
     sql += ' ORDER BY created_at DESC';
-    
+
     console.log('[PG-STORAGE] Search SQL:', sql);
     console.log('[PG-STORAGE] Search values:', values);
-    
+
     const res = await pool.query(sql, values);
-    // Ensure categories and tags are always arrays
     return res.rows.map((row) => ({
       id: row.id,
       title: row.title,
@@ -309,8 +299,8 @@ export class PgStorage {
       extractedText: row.extracted_text,
       structuredText: (() => {
         try {
-          return row.structured_text ? 
-            (typeof row.structured_text === 'string' ? JSON.parse(row.structured_text) : row.structured_text) 
+          return row.structured_text ?
+            (typeof row.structured_text === 'string' ? JSON.parse(row.structured_text) : row.structured_text)
             : null;
         } catch (e) { return null; }
       })(),
@@ -337,18 +327,16 @@ export class PgStorage {
   async getDocumentStats() {
     const res = await pool.query('SELECT COUNT(*) as total FROM documents');
     const totalDocuments = parseInt(res.rows[0].total, 10);
-    // Add more stats as needed
     return { totalDocuments, processing: 0, searchable: 0, storageUsed: 'N/A' };
   }
 
-  // Category operations (implement as needed)
   async getCategory(id: number): Promise<Category | undefined> {
     const res = await pool.query('SELECT * FROM categories WHERE id = $1', [id]);
     return res.rows[0];
   }
   async getAllCategories(): Promise<Category[]> {
     const res = await pool.query(`
-      SELECT 
+      SELECT
         c.*,
         COUNT(d.id) as document_count
       FROM categories c
