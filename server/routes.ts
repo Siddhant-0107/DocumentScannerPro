@@ -87,7 +87,7 @@ export async function registerRoutes(app: express.Express): Promise<Server> {
   // or repairing its vector index.
   app.post("/api/documents/:id/index", async (req, res) => {
     try {
-      if (!process.env.OPENAI_API_KEY) return res.status(503).json({ message: "OPENAI_API_KEY is not configured" });
+      if (!process.env.GEMINI_API_KEY) return res.status(503).json({ message: "GEMINI_API_KEY is not configured" });
       const document = await storage.getDocument(parseInt(req.params.id));
       if (!document?.extractedText) return res.status(404).json({ message: "Processed document text not found" });
       const result = await indexDocument(document.id, document.extractedText);
@@ -102,7 +102,7 @@ export async function registerRoutes(app: express.Express): Promise<Server> {
     try {
       const question = typeof req.body?.question === "string" ? req.body.question.trim() : "";
       if (!question) return res.status(400).json({ message: "question is required" });
-      if (!process.env.OPENAI_API_KEY) return res.status(503).json({ message: "OPENAI_API_KEY is not configured" });
+      if (!process.env.GEMINI_API_KEY) return res.status(503).json({ message: "GEMINI_API_KEY is not configured" });
       const document = await storage.getDocument(parseInt(req.params.id));
       if (!document) return res.status(404).json({ message: "Document not found" });
       res.json(await answerQuestion(document.id, question));
