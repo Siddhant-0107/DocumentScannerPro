@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { storage } from "./pg-storage";
 import { answerQuestion, indexDocument } from "./rag";
-import { searchSchema } from "@shared/schema";
+import { searchSchema } from "../shared/schema";
 
 export const aiRouter = Router();
 
