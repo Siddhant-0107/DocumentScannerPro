@@ -3,9 +3,9 @@ import { createServer, type Server } from "http";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
-import { storage } from "./pg-storage";
-import { answerQuestion, indexDocument } from "./rag";
-import { insertDocumentSchema, searchSchema } from "@shared/schema";
+import { storage } from "./pg-storage.js";
+import { answerQuestion, indexDocument } from "./rag.js";
+import { insertDocumentSchema, searchSchema } from "../shared/schema.js";
 import express from "express";
 
 const uploadDir = process.env.VERCEL
@@ -85,8 +85,6 @@ export async function registerRoutes(app: express.Express): Promise<Server> {
     }
   });
 
-  // Re-index an already processed document after changing the embedding model
-  // or repairing its vector index.
   app.post("/api/documents/:id/index", async (req, res) => {
     try {
       if (!process.env.GEMINI_API_KEY) return res.status(503).json({ message: "GEMINI_API_KEY is not configured" });
@@ -99,7 +97,6 @@ export async function registerRoutes(app: express.Express): Promise<Server> {
     }
   });
 
-  // Ask questions about one document using vector similarity + grounded LLM generation.
   app.post("/api/documents/:id/ask", async (req, res) => {
     try {
       const question = typeof req.body?.question === "string" ? req.body.question.trim() : "";
