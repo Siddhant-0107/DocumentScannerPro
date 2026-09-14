@@ -3,9 +3,7 @@
   "version": "1.0.0",
   "type": "module",
   "license": "MIT",
-  "engines": {
-    "node": "24.x"
-  },
+  "engines": { "node": "24.x" },
   "scripts": {
     "dev": "tsx server/index.ts",
     "frontend": "vite",
@@ -104,6 +102,7 @@
     "@types/node": "20.16.11",
     "@types/passport": "^1.0.16",
     "@types/passport-local": "^1.0.38",
+    "@types/pdfjs-dist": "^2.10.377",
     "@types/react": "^18.3.11",
     "@types/react-dom": "^18.3.1",
     "@types/ws": "^8.5.13",
@@ -118,7 +117,5 @@
     "typescript": "^5.8.3",
     "vite": "^5.4.14"
   },
-  "optionalDependencies": {
-    "bufferutil": "^4.0.8"
-  }
+  "optionalDependencies": { "bufferutil": "^4.0.8" }
 }
