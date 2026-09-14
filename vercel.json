@@ -5,8 +5,7 @@
   "functions": {
     "index.ts": {
       "maxDuration": 60,
-      "includeFiles": "public/index.html",
-      "regions": ["iad1"]
+      "includeFiles": "public/index.html"
     }
   }
 }
