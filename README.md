@@ -1,292 +1,139 @@
-# 📄 Document Scanner Pro
+# AI Document Intelligence Platform
 
-A modern, full-stack document scanning and management application built with React, TypeScript, Express.js, and PostgreSQL. Upload documents, extract text using OCR, categorize files, and analyze your document collection with powerful analytics.
+A full-stack document intelligence application for uploading PDF/images, extracting text with OCR/PDF parsing, classifying documents, searching document content, and asking grounded questions using retrieval-augmented generation (RAG).
 
-![Document Scanner Pro](https://img.shields.io/badge/version-1.0.0-blue.svg)
-![License](https://img.shields.io/badge/license-MIT-green.svg)
-![TypeScript](https://img.shields.io/badge/TypeScript-5.8.3-blue.svg)
-![React](https://img.shields.io/badge/React-18.3.1-61DAFB.svg)
+## Features
 
-## ✨ Features
+- PDF, PNG, JPG and JPEG uploads (10 MB limit)
+- Asynchronous document processing with a background worker
+- Tesseract.js OCR for image documents
+- PDF.js text extraction for text-based PDFs
+- Rule-based document classification and entity extraction
+- PostgreSQL document metadata and structured OCR storage
+- Semantic document indexing with OpenAI embeddings
+- PostgreSQL + pgvector similarity search
+- RAG-based document Q&A with retrieved source chunks
+- React/TypeScript dashboard and analytics
 
-### 🚀 Core Functionality
-- **Document Upload** - Support for PNG, JPG, and PDF files up to 10MB
-- **OCR Text Extraction** - Powered by Tesseract.js for accurate text recognition
-- **Real-time Processing** - Live status updates during document processing
-- **Document Management** - Organize, search, and categorize your documents
-- **Analytics Dashboard** - Visualize document statistics and insights
+## Architecture
 
-### 🎯 Advanced Features
-- **Smart Categorization** - Auto-categorize documents (Invoices, Receipts, Contracts, Reports)
-- **Full-text Search** - Search across document content, titles, and tags
-- **Bulk Operations** - Manage multiple documents simultaneously
-- **Responsive Design** - Works seamlessly across desktop and mobile devices
+```text
+React + TypeScript
+        |
+    REST API
+        |
+Node + Express
+        |
+  +-----+----------------+
+  |                      |
+PostgreSQL          Background Worker
+                         |
+                  PDF.js / Tesseract
+                         |
+                   Extracted Text
+                         |
+                      Chunking
+                         |
+                    Embeddings
+                         |
+                  PostgreSQL/pgvector
+                         |
+                    Similarity Search
+                         |
+                        LLM
+                         |
+                  Grounded Answer
+```
 
-### 🔧 Technical Features
-- **PostgreSQL Database** - Persistent storage with ACID compliance
-- **Background Worker** - Asynchronous document processing queue
-- **API-first Architecture** - RESTful API with proper error handling
-- **Type Safety** - Full TypeScript implementation with Zod validation
-- **Modern UI** - Built with Radix UI and Tailwind CSS
+## Tech Stack
 
-## 🛠️ Tech Stack
+**Frontend:** React, TypeScript, Vite, Tailwind CSS, Radix UI, React Query, Recharts
 
-### Frontend
-- **React 18.3.1** - Modern UI library with hooks
-- **TypeScript** - Type-safe JavaScript
-- **Vite** - Fast build tool and dev server
-- **Tailwind CSS** - Utility-first CSS framework
-- **Radix UI** - Headless UI components
-- **Framer Motion** - Smooth animations
-- **Recharts** - Interactive charts for analytics
-- **React Query** - Server state management
+**Backend:** Node.js, Express.js, TypeScript, Multer, Zod
 
-### Backend
-- **Node.js** - JavaScript runtime
-- **Express.js** - Web application framework
-- **TypeScript** - Type-safe server development
-- **PostgreSQL** - Relational database
-- **Multer** - File upload middleware
-- **Zod** - Schema validation
+**Document AI:** Tesseract.js, PDF.js, OpenAI embeddings, RAG
 
-### Processing & Storage
-- **Tesseract.js** - OCR text extraction
-- **PDF.js** - PDF parsing and processing
-- **pg** - PostgreSQL client for Node.js
+**Storage:** PostgreSQL, pgvector
 
-## 🚀 Quick Start
+## Setup
 
 ### Prerequisites
-- Node.js (v18 or higher)
-- PostgreSQL (v12 or higher)
-- npm or yarn
 
-### Installation
+- Node.js 18+
+- PostgreSQL with the `vector` extension (Neon and other managed PostgreSQL providers commonly support pgvector)
+- OpenAI API key for semantic indexing and Q&A
 
-1. **Clone the repository**
-   ```bash
-   git clone https://github.com/yourusername/document-scanner-pro.git
-   cd document-scanner-pro
-   ```
+### Environment variables
 
-2. **Install dependencies**
-   ```bash
-   npm install
-   ```
-
-3. **Set up PostgreSQL database**
-   ```bash
-   createdb docscanpro
-   ```
-
-4. **Configure environment variables**
-   Create a `.env` file in the root directory:
-   ```env
-   DATABASE_URL=postgres://postgres:yourpassword@localhost:5432/docscanpro
-   PORT=5000
-   NODE_ENV=development
-   ```
-
-5. **Initialize the database**
-   ```bash
-   npm run setup-db
-   ```
-
-6. **Start the application**
-   ```bash
-   npm run start:all
-   ```
-
-   This command starts:
-   - Backend API server (Port 5000)
-   - Frontend development server (Port 5173)
-   - Document processing worker
-
-7. **Open your browser**
-   Navigate to `http://localhost:5000`
-
-## 📁 Project Structure
-
+```env
+DATABASE_URL=postgresql://...
+OPENAI_API_KEY=...
+EMBEDDING_MODEL=text-embedding-3-small
+CHAT_MODEL=gpt-4o-mini
+NODE_ENV=development
 ```
+
+The application automatically creates the `document_chunks` table and enables pgvector on startup when the database user has permission to install extensions.
+
+### Run
+
+```bash
+npm install
+npm run start:all
+```
+
+The command starts the API server, frontend development server, and document worker.
+
+- App: `http://localhost:5000`
+- AI Assistant: `http://localhost:5000/assistant`
+
+## RAG Flow
+
+1. A document is uploaded and stored with `pending` status.
+2. The background worker extracts text using Tesseract.js or PDF.js.
+3. Extracted text is cleaned and structured.
+4. The text is split into overlapping chunks.
+5. Each chunk is converted into an embedding using `text-embedding-3-small`.
+6. Embeddings are stored in PostgreSQL using pgvector.
+7. A user question is embedded using the same model.
+8. pgvector returns the most similar document chunks.
+9. The retrieved chunks are supplied to the LLM as context.
+10. The assistant answers using only the retrieved context and returns the source chunks used.
+
+## API
+
+| Method | Endpoint | Purpose |
+|---|---|---|
+| POST | `/api/documents/upload` | Upload documents |
+| GET | `/api/documents` | List documents |
+| GET | `/api/documents/:id` | Get a document |
+| POST | `/api/documents/search` | Search/filter documents |
+| POST | `/api/documents/:id/index` | Create/update semantic index |
+| POST | `/api/documents/:id/ask` | Ask a question about a document |
+| GET | `/api/documents/stats` | Dashboard statistics |
+
+## Evaluation
+
+OCR and classification performance should be measured against a held-out document set before reporting metrics on a resume. The project does not hard-code performance claims; reported accuracy/precision should come from reproducible evaluation results.
+
+## Project Structure
+
+```text
 document-scanner-pro/
-├── client/                 # Frontend React application
-│   ├── src/
-│   │   ├── components/     # Reusable UI components
-│   │   ├── pages/         # Application pages
-│   │   ├── lib/           # Utilities and configurations
-│   │   └── types/         # TypeScript type definitions
-├── server/                # Backend Express.js application
-│   ├── routes.ts          # API routes
-│   ├── pg-storage.ts      # Database operations
-│   ├── server/            # Background services
-│   │   └── document-worker.ts  # Document processing worker
-│   └── index.ts          # Server entry point
-├── shared/               # Shared types and schemas
-│   └── schema.ts         # Zod validation schemas
-├── uploads/              # Document storage directory
-└── package.json          # Project dependencies and scripts
+├── client/                         # React frontend
+├── server/
+│   ├── routes.ts                   # Core REST API
+│   ├── ai-routes.ts                # Semantic search + RAG endpoints
+│   ├── rag.ts                      # Chunking, embeddings and RAG
+│   ├── ai-setup.ts                 # pgvector setup
+│   ├── pg-storage.ts               # PostgreSQL access
+│   ├── text-processor.ts           # OCR text processing/classification
+│   ├── server/document-worker.ts   # Async document processing
+│   └── index.ts                    # Server entry point
+├── shared/schema.ts                # Shared types and validation
+└── package.json
 ```
 
-## 🔄 Available Scripts
+## License
 
-| Script | Description |
-|--------|-------------|
-| `npm run dev` | Start backend server only |
-| `npm run frontend` | Start frontend development server |
-| `npm run worker` | Start document processing worker |
-| `npm run start:all` | Start all services simultaneously |
-
-## 📖 API Documentation
-
-### Documents API
-
-#### Upload Documents
-```http
-POST /api/documents/upload
-Content-Type: multipart/form-data
-
-files: File[]
-```
-
-#### Get All Documents
-```http
-GET /api/documents
-```
-
-#### Get Document by ID
-```http
-GET /api/documents/:id
-```
-
-#### Update Document
-```http
-PATCH /api/documents/:id
-Content-Type: application/json
-
-{
-  "title": "string",
-  "categories": "string[]",
-  "tags": "string[]"
-}
-```
-
-### Categories API
-
-#### Get All Categories
-```http
-GET /api/categories
-```
-
-## 🗄️ Database Schema
-
-### Documents Table
-- `id` - Primary key
-- `title` - Document title
-- `original_name` - Original filename
-- `file_type` - MIME type
-- `file_size` - File size in bytes
-- `file_path` - Storage path
-- `extracted_text` - OCR extracted text
-- `categories` - JSON array of categories
-- `tags` - JSON array of tags
-- `processingStatus` - Processing status (pending/processing/completed/failed)
-- `created_at` - Creation timestamp
-- `processed_date` - Processing completion timestamp
-
-### Categories Table
-- `id` - Primary key
-- `name` - Category name
-- `color` - Display color (hex)
-- `created_at` - Creation timestamp
-
-## 🔧 Configuration
-
-### Environment Variables
-
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `DATABASE_URL` | PostgreSQL connection string | `postgres://postgres:12345@localhost:5432/docscanpro` |
-| `PORT` | Server port | `5000` |
-| `NODE_ENV` | Environment mode | `development` |
-
-### File Upload Limits
-- Maximum file size: 10MB
-- Supported formats: PNG, JPG, JPEG, PDF
-- Storage location: `./uploads/`
-
-## 🚀 Deployment
-
-### Production Build
-
-1. **Build the frontend**
-   ```bash
-   npm run build
-   ```
-
-2. **Set production environment variables**
-   ```bash
-   export NODE_ENV=production
-   export DATABASE_URL=your_production_db_url
-   ```
-
-3. **Start the production server**
-   ```bash
-   npm start
-   ```
-
-### Docker Deployment (Optional)
-
-```dockerfile
-FROM node:18-alpine
-WORKDIR /app
-COPY package*.json ./
-RUN npm ci --only=production
-COPY . .
-RUN npm run build
-EXPOSE 5000
-CMD ["npm", "start"]
-```
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
-
-## 📝 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## 🔮 Roadmap
-
-- [ ] **Cloud Storage Integration** - AWS S3, Google Drive, Dropbox
-- [ ] **Advanced OCR** - Support for handwritten text
-- [ ] **Document Templates** - Pre-defined document types
-- [ ] **User Authentication** - Multi-user support
-- [ ] **API Rate Limiting** - Enhanced security
-- [ ] **Mobile App** - React Native implementation
-- [ ] **Advanced Analytics** - ML-powered insights
-- [ ] **Document Versioning** - Track document changes
-
-## 🐛 Known Issues
-
-- Large PDF files (>10MB) may take longer to process
-- OCR accuracy depends on image quality
-- Background worker requires manual restart after code changes
-
-## 📞 Support
-
-For support, please open an issue on GitHub or contact [siddhantdubey0107@gmail.com](mailto:siddhantdubey0107@gmail.com).
-
-## 🙏 Acknowledgments
-
-- [Tesseract.js](https://tesseract.projectnaptha.com/) for OCR capabilities
-- [Radix UI](https://www.radix-ui.com/) for accessible UI components
-- [Tailwind CSS](https://tailwindcss.com/) for styling utilities
-- [PostgreSQL](https://www.postgresql.org/) for robust data storage
-
----
-
-⭐ **Star this repository if you found it helpful!**
+MIT
