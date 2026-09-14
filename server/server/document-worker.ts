@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import { storage } from '../pg-storage.js';
 import { TextProcessor } from '../text-processor.js';
 import { indexDocument } from '../rag.js';
