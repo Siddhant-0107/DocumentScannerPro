@@ -1,101 +1,93 @@
 import { storage } from '../pg-storage.js';
 import { TextProcessor } from '../text-processor.js';
+import { indexDocument } from '../rag.js';
 import fs from 'fs';
 import path from 'path';
-import { fileURLToPath } from 'url';
 import { createWorker } from 'tesseract.js';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+import * as pdfjsLib from 'pdfjs-dist/legacy/build/pdf.mjs';
 
 const textProcessor = new TextProcessor();
 
 async function extractTextFromFile(filePath: string): Promise<string> {
   const ext = path.extname(filePath).toLowerCase();
-  
-  try {
-    if (['.png', '.jpg', '.jpeg'].includes(ext)) {
-      console.log('[worker] Processing image with OCR...');
-      const worker = await createWorker('eng');
+
+  if (['.png', '.jpg', '.jpeg'].includes(ext)) {
+    const worker = await createWorker('eng');
+    try {
       const { data: { text } } = await worker.recognize(filePath);
-      await worker.terminate();
       return text;
-    } else if (ext === '.pdf') {
-      console.log('[worker] Processing PDF...');
-      // For now, return a placeholder for PDF processing
-      // You can implement proper PDF text extraction later
-      return `PDF content extracted from ${path.basename(filePath)}. This is a placeholder for PDF text extraction.`;
-    } else {
-      throw new Error(`Unsupported file type: ${ext}`);
+    } finally {
+      await worker.terminate();
     }
-  } catch (error) {
-    console.error('[worker] Error extracting text:', error);
-    throw error;
   }
+
+  if (ext === '.pdf') {
+    const data = new Uint8Array(fs.readFileSync(filePath));
+    const pdf = await pdfjsLib.getDocument({ data }).promise;
+    const pages: string[] = [];
+
+    for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber++) {
+      const page = await pdf.getPage(pageNumber);
+      const content = await page.getTextContent();
+      const text = content.items
+        .map((item: any) => ('str' in item ? item.str : ''))
+        .join(' ')
+        .trim();
+      if (text) pages.push(text);
+    }
+
+    // This project keeps the OCR path simple: text PDFs use PDF.js. Scanned
+    // PDFs without an embedded text layer can be added as a later enhancement.
+    return pages.join('\n\n');
+  }
+
+  throw new Error(`Unsupported file type: ${ext}`);
 }
 
 async function processPendingDocuments() {
-  try {
-    const docs = await storage.getAllDocuments();
-    console.log('[worker] Found documents:', docs.length);
-    
-    // Look for documents that need processing
-    const pendingDocs = docs.filter(doc => 
-      doc.processingStatus === 'pending' || 
-      (doc.processingStatus === 'completed' && (!doc.extractedText || doc.extractedText.trim() === ''))
-    );
-    console.log('[worker] Documents needing processing:', pendingDocs.length);
-    
-    for (const doc of pendingDocs) {
-      try {
-        console.log(`[worker] Processing document ${doc.id}: ${doc.title}`);
-        
-        // Update status to processing
-        await storage.updateDocument(doc.id, { processingStatus: 'processing' });
-        
-        // Check if file exists
-        if (!fs.existsSync(doc.filePath)) {
-          console.log(`[worker] ⚠️  File not found: ${doc.filePath}`);
-          await storage.updateDocument(doc.id, { 
-            processingStatus: 'failed',
-            extractedText: 'File not found on disk',
-          });
-          continue;
-        }
-        
-        // Extract text using OCR or PDF processing
-        const extractedText = await extractTextFromFile(doc.filePath);
-        
-        // Structure the text
-        const structuredText = textProcessor.processText(extractedText);
-        
-        // Update document with extracted and structured text
-        await storage.updateDocument(doc.id, {
-          extractedText,
-          structuredText,
-          processingStatus: 'completed',
-          processedDate: new Date(),
-        });
-        
-        console.log(`[worker] ✅ Document ${doc.id} processed successfully`);
-        console.log(`[worker] 📊 Document type: ${structuredText.documentType}`);
-        console.log(`[worker] 📧 Found ${structuredText.entities.emails.length} emails`);
-        console.log(`[worker] 📞 Found ${structuredText.entities.phones.length} phone numbers`);
-        console.log(`[worker] 💰 Found ${structuredText.entities.amounts.length} amounts`);
-        
-      } catch (err) {
-        console.error(`[worker] ❌ Failed to process document ${doc.id}:`, err);
-        await storage.updateDocument(doc.id, { processingStatus: 'failed' });
+  const docs = await storage.getAllDocuments();
+  const pendingDocs = docs.filter(doc => doc.processingStatus === 'pending');
+
+  for (const doc of pendingDocs) {
+    try {
+      await storage.updateDocument(doc.id, { processingStatus: 'processing' });
+
+      if (!fs.existsSync(doc.filePath)) {
+        throw new Error('File not found on disk');
       }
+
+      const extractedText = await extractTextFromFile(doc.filePath);
+      const structuredText = textProcessor.processText(extractedText);
+
+      await storage.updateDocument(doc.id, {
+        extractedText,
+        structuredText,
+        processingStatus: 'completed',
+        processedDate: new Date(),
+      });
+
+      // RAG indexing is optional at processing time so OCR still works when
+      // an LLM API key is not configured.
+      if (process.env.OPENAI_API_KEY && extractedText.trim()) {
+        try {
+          const result = await indexDocument(doc.id, extractedText);
+          console.log(`[worker] Indexed ${result.chunks} chunks for document ${doc.id}`);
+        } catch (error) {
+          console.error(`[worker] RAG indexing failed for document ${doc.id}:`, error);
+        }
+      }
+
+      console.log(`[worker] Processed document ${doc.id} as ${structuredText.documentType}`);
+    } catch (error) {
+      console.error(`[worker] Failed document ${doc.id}:`, error);
+      await storage.updateDocument(doc.id, {
+        processingStatus: 'failed',
+        extractedText: error instanceof Error ? error.message : 'Processing failed',
+      });
     }
-  } catch (error) {
-    console.error('[worker] Error querying documents:', error);
   }
 }
 
-// Process documents immediately on startup
 console.log('[worker] Document processing worker started');
-processPendingDocuments();
-
-// Then process every 30 seconds
-setInterval(processPendingDocuments, 30000);
+processPendingDocuments().catch(console.error);
+setInterval(() => processPendingDocuments().catch(console.error), 30000);
