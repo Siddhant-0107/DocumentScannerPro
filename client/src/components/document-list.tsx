@@ -84,7 +84,7 @@ export default function DocumentList({ searchParams, onDocumentSelect }: Documen
               <div className="flex-1 min-w-0 ml-4">
                 <p className="text-sm font-medium text-gray-900 truncate">{document.title}</p>
                 <p className="text-xs text-gray-500 mt-1"><span>{formatFileSize(document.fileSize)}</span> • <span className="ml-1">Uploaded {document.uploadDate ? formatDate(typeof document.uploadDate === "string" ? document.uploadDate : document.uploadDate instanceof Date ? document.uploadDate.toISOString() : "") : "Unknown"}</span> • <span className="ml-1">{getStatusBadge(document.processingStatus)}</span></p>
-                <div className="flex flex-wrap gap-1 mt-2">{(document.categories ?? []).map(category => <Badge key={category} className="bg-primary-100 text-primary-800 text-xs">{category}</Badge>)}{(document.tags ?? []).map(tag => <Badge key={tag} variant="secondary" className="text-xs">{tag}</Badge>)}</div>
+                {(document.tags ?? []).length > 0 && <div className="flex flex-wrap gap-1 mt-2">{(document.tags ?? []).map(tag => <Badge key={tag} variant="secondary" className="text-xs">{tag}</Badge>)}</div>}
                 {getEntityIndicators(document)}
               </div>
               <div className="flex items-center space-x-2 ml-4"><Button variant="ghost" size="icon" className="text-gray-400 hover:text-primary" onClick={e => { e.stopPropagation(); onDocumentSelect(document); }}><Eye size={16} /></Button><Button variant="ghost" size="icon" className="text-gray-400 hover:text-red-500" onClick={e => { e.stopPropagation(); deleteMutation.mutate(document.id); }}><Trash2 size={16} /></Button></div>
