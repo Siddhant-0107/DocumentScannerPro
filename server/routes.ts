@@ -8,7 +8,9 @@ import { answerQuestion, indexDocument } from "./rag";
 import { insertDocumentSchema, searchSchema } from "@shared/schema";
 import express from "express";
 
-const uploadDir = path.join(process.cwd(), "uploads");
+const uploadDir = process.env.VERCEL
+  ? "/tmp/document-scanner-uploads"
+  : path.join(process.cwd(), "uploads");
 if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
 
 const upload = multer({
