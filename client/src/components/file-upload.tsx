@@ -120,6 +120,23 @@ export default function FileUpload() {
         await apiRequest("PATCH", `/api/documents/${documentId}`, updateData);
       }
 
+      // Automatically build the vector index so the document is ready for RAG Q&A.
+      // Keep OCR completion separate from AI indexing so a temporary Gemini error
+      // does not erase successfully extracted text.
+      if (typeof extractedText === "string" && extractedText.trim().length > 0) {
+        try {
+          const indexResult = await apiRequest("POST", `/api/documents/${documentId}/index`);
+          console.log("RAG index created:", indexResult);
+        } catch (indexError) {
+          console.error("RAG indexing failed:", indexError);
+          toast({
+            title: "OCR complete, AI indexing failed",
+            description: "The document text was saved, but AI Q&A is not ready yet.",
+            variant: "destructive",
+          });
+        }
+      }
+
       // Update progress to completed
       setUploadProgress(prev => 
         prev.map(item => 
