@@ -6,7 +6,8 @@ async function throwIfResNotOk(res: Response) {
     throw new Error(`${res.status}: ${text}`);
   }
 }
-const BASE_URL = "http://localhost:5000";
+
+const BASE_URL = "";
 
 export async function apiRequest(
   method: string,
