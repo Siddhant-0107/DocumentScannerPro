@@ -64,12 +64,26 @@ async function createEmbedding(text: string, taskType: "RETRIEVAL_DOCUMENT" | "R
   });
 
   const values = data.embedding?.values;
-  if (!Array.isArray(values) || values.length !== EMBEDDING_DIMENSIONS) {
-    throw new Error(`Gemini embedding returned an unexpected dimension: ${values?.length ?? 0}`);
+  if (!Array.isArray(values)) {
+    throw new Error("Gemini embedding response did not contain values");
+  }
+
+  // Gemini normally honors outputDimensionality. If the API returns its
+  // default 3072 dimensions anyway, truncate the MRL embedding to the same
+  // 1536 dimensions used by pgvector. Both document and query embeddings
+  // pass through this function, so they remain in the same vector space.
+  const reduced = values.length === EMBEDDING_DIMENSIONS
+    ? values
+    : values.length >= EMBEDDING_DIMENSIONS
+      ? values.slice(0, EMBEDDING_DIMENSIONS)
+      : null;
+
+  if (!reduced) {
+    throw new Error(`Gemini embedding returned an unexpected dimension: ${values.length}`);
   }
 
   // gemini-embedding-001 requires normalization when using a reduced dimension.
-  return normalizeEmbedding(values);
+  return normalizeEmbedding(reduced);
 }
 
 function vectorLiteral(values: number[]) {
