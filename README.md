@@ -1,19 +1,18 @@
 # AI Document Intelligence Platform
 
-A full-stack document intelligence application for uploading PDF/images, extracting text with OCR/PDF parsing, classifying documents, searching document content, and asking grounded questions using retrieval-augmented generation (RAG).
+A lean full-stack document intelligence application for uploading PDF/images, extracting text with OCR/PDF parsing, searching document content, and asking grounded questions using retrieval-augmented generation (RAG).
 
 ## Features
 
 - PDF, PNG, JPG and JPEG uploads (10 MB limit)
-- Asynchronous document processing with a background worker
 - Tesseract.js OCR for image documents
 - PDF.js text extraction for text-based PDFs
-- Rule-based document classification and entity extraction
-- PostgreSQL document metadata and structured OCR storage
+- Entity extraction from processed text
+- PostgreSQL document metadata and OCR text storage
 - Semantic document indexing with Gemini embeddings
 - PostgreSQL + pgvector similarity search
 - RAG-based document Q&A with retrieved source chunks
-- React/TypeScript dashboard and analytics
+- Simple React/TypeScript document dashboard and text search
 
 ## Architecture
 
@@ -26,7 +25,7 @@ Node + Express
         |
   +-----+----------------+
   |                      |
-PostgreSQL          Background Worker
+PostgreSQL          Document Processing
                          |
                   PDF.js / Tesseract
                          |
@@ -47,7 +46,7 @@ PostgreSQL          Background Worker
 
 ## Tech Stack
 
-**Frontend:** React, TypeScript, Vite, Tailwind CSS, Radix UI, React Query, Recharts
+**Frontend:** React, TypeScript, Vite, Tailwind CSS, Radix UI, React Query
 
 **Backend:** Node.js, Express.js, TypeScript, Multer, Zod
 
@@ -88,16 +87,16 @@ The command starts the API server, frontend development server, and document wor
 
 ## RAG Flow
 
-1. A document is uploaded and stored with `pending` status.
-2. The background worker extracts text using Tesseract.js or PDF.js.
-3. Extracted text is cleaned and structured.
+1. A document is uploaded and stored.
+2. Text is extracted using Tesseract.js or PDF.js.
+3. Extracted text is cleaned and processed.
 4. The text is split into overlapping chunks.
 5. Each chunk is converted into a 1536-dimensional Gemini embedding.
 6. Embeddings are normalized and stored in PostgreSQL using pgvector.
 7. A user question is embedded using the same Gemini embedding model.
 8. pgvector returns the most similar document chunks.
 9. The retrieved chunks are supplied to Gemini as context.
-10. The assistant answers using only the retrieved context and returns the source chunks used.
+10. The assistant answers using the retrieved context and returns the source chunks used.
 
 The project uses the Gemini Developer API's free tier for small demos and presentations; free-tier limits are subject to Google's current quotas and model availability.
 
@@ -108,14 +107,14 @@ The project uses the Gemini Developer API's free tier for small demos and presen
 | POST | `/api/documents/upload` | Upload documents |
 | GET | `/api/documents` | List documents |
 | GET | `/api/documents/:id` | Get a document |
-| POST | `/api/documents/search` | Search/filter documents |
+| POST | `/api/documents/search` | Search document text |
 | POST | `/api/documents/:id/index` | Create/update semantic index |
 | POST | `/api/documents/:id/ask` | Ask a question about a document |
 | GET | `/api/documents/stats` | Dashboard statistics |
 
 ## Evaluation
 
-OCR and classification performance should be measured against a held-out document set before reporting metrics on a resume. The project does not hard-code performance claims; reported accuracy/precision should come from reproducible evaluation results.
+OCR performance should be measured against a held-out document set before reporting an OCR accuracy metric on a resume. Reported metrics should come from reproducible evaluation results.
 
 ## Project Structure
 
@@ -128,7 +127,7 @@ document-scanner-pro/
 │   ├── rag.ts                      # Chunking, Gemini embeddings and RAG
 │   ├── ai-setup.ts                 # pgvector setup
 │   ├── pg-storage.ts               # PostgreSQL access
-│   ├── text-processor.ts           # OCR text processing/classification
+│   ├── text-processor.ts           # OCR text processing/entity extraction
 │   ├── server/document-worker.ts   # Async document processing
 │   └── index.ts                    # Server entry point
 ├── shared/schema.ts                # Shared types and validation
