@@ -1,8 +1,8 @@
 import express, { type Request, Response, NextFunction } from "express";
 import cors from "cors";
-import { registerRoutes } from "./routes";
-import { aiRouter } from "./ai-routes";
-import { setupAiStorage } from "./ai-setup";
+import { registerRoutes } from "./routes.js";
+import { aiRouter } from "./ai-routes.js";
+import { setupAiStorage } from "./ai-setup.js";
 
 const app = express();
 
