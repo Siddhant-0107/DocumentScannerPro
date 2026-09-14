@@ -1,146 +1,69 @@
-import type { Express, Request } from "express";
+import type { Express } from "express";
 import { createServer, type Server } from "http";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
 import { storage } from "./pg-storage";
+import { answerQuestion, indexDocument } from "./rag";
 import { insertDocumentSchema, searchSchema } from "@shared/schema";
 import express from "express";
 
-// Configure multer for file uploads
 const uploadDir = path.join(process.cwd(), "uploads");
-if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir, { recursive: true });
-}
+if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
 
 const upload = multer({
   dest: uploadDir,
-  limits: {
-    fileSize: 10 * 1024 * 1024, // 10MB limit
-  },
-  fileFilter: (req: any, file: any, cb: any) => {
+  limits: { fileSize: 10 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => {
     const allowedTypes = ['image/png', 'image/jpeg', 'image/jpg', 'application/pdf'];
-    if (allowedTypes.includes(file.mimetype)) {
-      cb(null, true);
-    } else {
-      cb(new Error('Invalid file type. Only PNG, JPG, and PDF files are allowed.'));
-    }
+    if (allowedTypes.includes(file.mimetype)) cb(null, true);
+    else cb(new Error('Invalid file type. Only PNG, JPG, and PDF files are allowed.'));
   },
 });
 
-// Add a startup log to confirm server restarts
 export async function registerRoutes(app: express.Express): Promise<Server> {
-  console.log("[DocScanPro] Server started at", new Date().toLocaleString());
-  // Disable ETag and Last-Modified headers globally
   app.set('etag', false);
   app.use((req, res, next) => {
-    res.removeHeader('Last-Modified');
-    // Add global cache-control headers for all API responses
     if (req.path.startsWith('/api/')) {
       res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
       res.setHeader("Pragma", "no-cache");
       res.setHeader("Expires", "0");
-      res.setHeader("Surrogate-Control", "no-store");
     }
     next();
   });
-  // Document routes
-  app.get("/api/documents", async (req, res) => {
+
+  app.get("/api/documents", async (_req, res) => {
     try {
-      // Remove conditional request headers to force 200 response
-      delete req.headers['if-none-match'];
-      delete req.headers['if-modified-since'];
-      // Prevent caching so client always gets latest documents
-      res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
-      res.setHeader("Pragma", "no-cache");
-      res.setHeader("Expires", "0");
-      res.setHeader("Surrogate-Control", "no-store");
-      let documents = await storage.getAllDocuments();
-      // Ensure categories is always an array
-      documents = documents.map(doc => ({
-        ...doc,
-        categories: Array.isArray(doc.categories) ? doc.categories : [],
-      }));
-      res.status(200).json(documents);
-    } catch (error) {
-      res.status(500).json({ message: "Failed to fetch documents" });
-    }
+      const documents = await storage.getAllDocuments();
+      res.json(documents.map(doc => ({ ...doc, categories: Array.isArray(doc.categories) ? doc.categories : [] })));
+    } catch { res.status(500).json({ message: "Failed to fetch documents" }); }
   });
 
-  app.get("/api/documents/stats", async (req, res) => {
-    try {
-      const stats = await storage.getDocumentStats();
-      res.json(stats);
-    } catch (error) {
-      res.status(500).json({ message: "Failed to fetch stats" });
-    }
+  app.get("/api/documents/stats", async (_req, res) => {
+    try { res.json(await storage.getDocumentStats()); }
+    catch { res.status(500).json({ message: "Failed to fetch stats" }); }
   });
 
   app.get("/api/documents/:id", async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
-      const document = await storage.getDocument(id);
-      
-      if (!document) {
-        return res.status(404).json({ message: "Document not found" });
-      }
-      
+      const document = await storage.getDocument(parseInt(req.params.id));
+      if (!document) return res.status(404).json({ message: "Document not found" });
       res.json(document);
-    } catch (error) {
-      res.status(500).json({ message: "Failed to fetch document" });
-    }
+    } catch { res.status(500).json({ message: "Failed to fetch document" }); }
   });
 
   app.post("/api/documents/upload", upload.array("files"), async (req: any, res) => {
-    console.log("🚨🚨🚨 UPLOAD ROUTE HIT 🚨🚨🚨");
-    console.log("[UPLOAD START] Upload request received");
-    console.log("[UPLOAD DEBUG] req.files:", req.files);
-    console.log("[UPLOAD DEBUG] req.body:", req.body);
-    console.log("[UPLOAD DEBUG] Files type check:", typeof req.files, Array.isArray(req.files));
-    
-    // Robustly parse categories as array, never null/undefined
-    let categories: string[] = [];
     try {
-      if (Array.isArray(req.body.categories)) {
-        categories = req.body.categories;
-      } else if (typeof req.body.categories === "string") {
-        // Handle single category as string (not JSON)
-        categories = [req.body.categories];
-      } else if (req.body.categories) {
-        // Handle any other type by converting to string array
-        categories = Array.isArray(req.body.categories) ? req.body.categories : [String(req.body.categories)];
-      } else {
-        categories = [];
+      if (!Array.isArray(req.files) || req.files.length === 0) {
+        return res.status(400).json({ message: "No files uploaded" });
       }
-    } catch {
-      categories = [];
-    }
-    console.log("Parsed categories from req.body:", categories);
-    console.log("Incoming files:", req.files);
-    console.log("Body:", req.body);
-    
-    try {
-      if (!req.files) {
-        console.log("[UPLOAD ERROR] No req.files found");
-        return res.status(400).json({ message: "No files uploaded - req.files is null/undefined" });
-      }
-      
-      if (!Array.isArray(req.files)) {
-        console.log("[UPLOAD ERROR] req.files is not an array:", typeof req.files);
-        return res.status(400).json({ message: "No files uploaded - req.files is not an array" });
-      }
-      
-      if (req.files.length === 0) {
-        console.log("[UPLOAD ERROR] req.files array is empty");
-        return res.status(400).json({ message: "No files uploaded - files array is empty" });
-      }
-
-      console.log(`[UPLOAD DEBUG] Processing ${req.files.length} files`);
+      const categories = Array.isArray(req.body.categories)
+        ? req.body.categories
+        : req.body.categories ? [String(req.body.categories)] : [];
       const uploadedDocuments = [];
 
       for (const file of req.files) {
-        console.log(`[UPLOAD DEBUG] Processing file:`, file);
-        const documentData = {
+        const validatedData = insertDocumentSchema.parse({
           title: file.originalname,
           originalName: file.originalname,
           fileType: file.mimetype,
@@ -148,34 +71,43 @@ export async function registerRoutes(app: express.Express): Promise<Server> {
           filePath: file.path,
           extractedText: null,
           structuredText: null,
-          categories: categories,
+          categories,
           tags: [],
-          processingStatus: "pending" as const,
-        };
-        console.log("[UPLOAD DEBUG] Document data before validation:", documentData);
-        try {
-          console.log("[UPLOAD DEBUG] Starting validation...");
-          const validatedData = insertDocumentSchema.parse(documentData);
-          console.log("[UPLOAD DEBUG] Validation successful, creating document...");
-          const document = await storage.createDocument(validatedData);
-          console.log("[UPLOAD DEBUG] Document created successfully:", document);
-          uploadedDocuments.push(document);
-          console.log("Created document:", document); // Log the created document with ID
-        } catch (validationError) {
-          console.error("[UPLOAD ERROR] Validation failed:", validationError);
-          console.error("[UPLOAD ERROR] Validation error details:", JSON.stringify(validationError, null, 2));
-          return res.status(400).json({ message: "Validation failed", error: validationError });
-        }
+          processingStatus: "pending",
+        });
+        uploadedDocuments.push(await storage.createDocument(validatedData));
       }
-
-      console.log("All uploaded documents:", uploadedDocuments);
-      console.log("[UPLOAD SUCCESS] Sending response with documents");
-      res.json({ documents: uploadedDocuments }); // Always return full document objects with IDs
+      res.json({ documents: uploadedDocuments });
     } catch (error) {
-      console.error("[UPLOAD ERROR] Upload error:", error);
-      if (error && (error as Error).stack) console.error((error as Error).stack);
-      const errorMessage = (error instanceof Error) ? error.message : String(error);
-      res.status(500).json({ message: "Failed to upload documents", error: errorMessage });
+      res.status(400).json({ message: error instanceof Error ? error.message : "Failed to upload documents" });
+    }
+  });
+
+  // Re-index an already processed document after changing the embedding model
+  // or repairing its vector index.
+  app.post("/api/documents/:id/index", async (req, res) => {
+    try {
+      if (!process.env.OPENAI_API_KEY) return res.status(503).json({ message: "OPENAI_API_KEY is not configured" });
+      const document = await storage.getDocument(parseInt(req.params.id));
+      if (!document?.extractedText) return res.status(404).json({ message: "Processed document text not found" });
+      const result = await indexDocument(document.id, document.extractedText);
+      res.json({ documentId: document.id, ...result });
+    } catch (error) {
+      res.status(500).json({ message: error instanceof Error ? error.message : "Failed to index document" });
+    }
+  });
+
+  // Ask questions about one document using vector similarity + grounded LLM generation.
+  app.post("/api/documents/:id/ask", async (req, res) => {
+    try {
+      const question = typeof req.body?.question === "string" ? req.body.question.trim() : "";
+      if (!question) return res.status(400).json({ message: "question is required" });
+      if (!process.env.OPENAI_API_KEY) return res.status(503).json({ message: "OPENAI_API_KEY is not configured" });
+      const document = await storage.getDocument(parseInt(req.params.id));
+      if (!document) return res.status(404).json({ message: "Document not found" });
+      res.json(await answerQuestion(document.id, question));
+    } catch (error) {
+      res.status(500).json({ message: error instanceof Error ? error.message : "Failed to answer question" });
     }
   });
 
@@ -183,186 +115,76 @@ export async function registerRoutes(app: express.Express): Promise<Server> {
     try {
       const id = parseInt(req.params.id);
       const updates = req.body;
-      // Always coerce categories to array if present
-      if ('categories' in updates) {
-        if (!Array.isArray(updates.categories)) {
-          if (typeof updates.categories === 'string') {
-            try {
-              const parsed = JSON.parse(updates.categories);
-              updates.categories = Array.isArray(parsed) ? parsed : [parsed];
-            } catch {
-              updates.categories = [updates.categories];
-            }
-          } else {
-            updates.categories = [];
-          }
-        }
-      }
+      if ('categories' in updates && !Array.isArray(updates.categories)) updates.categories = [String(updates.categories)];
       const document = await storage.updateDocument(id, updates);
-      if (!document) {
-        return res.status(404).json({ message: "Document not found" });
-      }
-      // Ensure categories is always an array in response
-      document.categories = Array.isArray(document.categories) ? document.categories : [];
+      if (!document) return res.status(404).json({ message: "Document not found" });
       res.json(document);
-    } catch (error) {
-      res.status(500).json({ message: "Failed to update document" });
-    }
+    } catch { res.status(500).json({ message: "Failed to update document" }); }
   });
 
   app.delete("/api/documents/:id", async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       const document = await storage.getDocument(id);
-      
-      if (!document) {
-        return res.status(404).json({ message: "Document not found" });
-      }
-
-      // Delete file from filesystem
-      if (fs.existsSync(document.filePath)) {
-        fs.unlinkSync(document.filePath);
-      }
-
-      const success = await storage.deleteDocument(id);
-      
-      if (!success) {
-        return res.status(500).json({ message: "Failed to delete document" });
-      }
-      
+      if (!document) return res.status(404).json({ message: "Document not found" });
+      if (fs.existsSync(document.filePath)) fs.unlinkSync(document.filePath);
+      await storage.deleteDocument(id);
       res.json({ message: "Document deleted successfully" });
-    } catch (error) {
-      res.status(500).json({ message: "Failed to delete document" });
-    }
+    } catch { res.status(500).json({ message: "Failed to delete document" }); }
   });
 
-  // Unified search endpoint using POST for complex queries
   app.post("/api/documents/search", async (req, res) => {
-    try {
-      console.log('[SEARCH] POST search request:', req.body);
-      const searchParams = searchSchema.parse(req.body);
-      const documents = await storage.searchDocuments(searchParams);
-      console.log('[SEARCH] Found documents:', documents.length);
-      res.json(documents);
-    } catch (error) {
-      console.error('[SEARCH] POST search error:', error);
-      res.status(500).json({ 
-        message: "Failed to search documents",
-        error: error instanceof Error ? error.message : 'Unknown error'
-      });
-    }
+    try { res.json(await storage.searchDocuments(searchSchema.parse(req.body))); }
+    catch (error) { res.status(400).json({ message: error instanceof Error ? error.message : "Failed to search documents" }); }
   });
 
-  // Legacy GET search endpoint for simple queries
   app.get("/api/documents/search", async (req, res) => {
     try {
-      console.log('[SEARCH] GET search request:', req.query);
-      
-      // Convert query params to SearchParams format
-      const searchParams: any = {};
-      
-      if (req.query.query && typeof req.query.query === 'string') {
-        searchParams.query = req.query.query.trim();
+      const params: any = {};
+      if (typeof req.query.query === 'string') params.query = req.query.query.trim();
+      if (typeof req.query.documentType === 'string' && req.query.documentType !== 'all') params.documentType = req.query.documentType;
+      if (req.query.hasEmails === 'true') params.hasEmails = true;
+      if (req.query.hasPhones === 'true') params.hasPhones = true;
+      if (req.query.hasAmounts === 'true') params.hasAmounts = true;
+      if (typeof req.query.minConfidence === 'string') {
+        const value = parseFloat(req.query.minConfidence);
+        if (!Number.isNaN(value)) params.minConfidence = value;
       }
-      
-      if (req.query.documentType && typeof req.query.documentType === 'string' && req.query.documentType !== 'all') {
-        searchParams.documentType = req.query.documentType;
-      }
-      
-      if (req.query.hasEmails === 'true') {
-        searchParams.hasEmails = true;
-      }
-      
-      if (req.query.hasPhones === 'true') {
-        searchParams.hasPhones = true;
-      }
-      
-      if (req.query.hasAmounts === 'true') {
-        searchParams.hasAmounts = true;
-      }
-      
-      if (req.query.minConfidence && typeof req.query.minConfidence === 'string') {
-        const minConf = parseFloat(req.query.minConfidence);
-        if (!isNaN(minConf)) {
-          searchParams.minConfidence = minConf;
-        }
-      }
-
-      const documents = await storage.searchDocuments(searchParams);
-      console.log('[SEARCH] GET found documents:', documents.length);
-      res.json(documents);
-    } catch (error) {
-      console.error('[SEARCH] GET search error:', error);
-      res.status(500).json({ 
-        message: "Failed to search documents",
-        error: error instanceof Error ? error.message : 'Unknown error'
-      });
-    }
+      res.json(await storage.searchDocuments(params));
+    } catch (error) { res.status(400).json({ message: error instanceof Error ? error.message : "Failed to search documents" }); }
   });
 
-  // Category routes
-  app.get("/api/categories", async (req, res) => {
-    try {
-      const categories = await storage.getAllCategories();
-      res.json(categories);
-    } catch (error) {
-      res.status(500).json({ message: "Failed to fetch categories" });
-    }
+  app.get("/api/categories", async (_req, res) => {
+    try { res.json(await storage.getAllCategories()); }
+    catch { res.status(500).json({ message: "Failed to fetch categories" }); }
   });
 
   app.post("/api/categories", async (req, res) => {
-    try {
-      const categoryData = req.body;
-      const category = await storage.createCategory(categoryData);
-      res.json(category);
-    } catch (error) {
-      res.status(500).json({ message: "Failed to create category" });
-    }
+    try { res.json(await storage.createCategory(req.body)); }
+    catch { res.status(500).json({ message: "Failed to create category" }); }
   });
 
   app.patch("/api/categories/:id", async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
-      const updates = req.body;
-      const category = await storage.updateCategory(id, updates);
-      
-      if (!category) {
-        return res.status(404).json({ message: "Category not found" });
-      }
-      
+      const category = await storage.updateCategory(parseInt(req.params.id), req.body);
+      if (!category) return res.status(404).json({ message: "Category not found" });
       res.json(category);
-    } catch (error) {
-      res.status(500).json({ message: "Failed to update category" });
-    }
+    } catch { res.status(500).json({ message: "Failed to update category" }); }
   });
 
   app.delete("/api/categories/:id", async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
-      const success = await storage.deleteCategory(id);
-      
-      if (!success) {
-        return res.status(404).json({ message: "Category not found" });
-      }
-      
+      const success = await storage.deleteCategory(parseInt(req.params.id));
+      if (!success) return res.status(404).json({ message: "Category not found" });
       res.json({ message: "Category deleted successfully" });
-    } catch (error) {
-      res.status(500).json({ message: "Failed to delete category" });
-    }
+    } catch { res.status(500).json({ message: "Failed to delete category" }); }
   });
 
-  // File serving route
   app.get("/api/files/:filename", (req, res) => {
-    const filename = req.params.filename;
-    const filePath = path.join(uploadDir, filename);
-    
-    if (!fs.existsSync(filePath)) {
-      return res.status(404).json({ message: "File not found" });
-    }
-    
+    const filePath = path.join(uploadDir, req.params.filename);
+    if (!fs.existsSync(filePath)) return res.status(404).json({ message: "File not found" });
     res.sendFile(filePath);
   });
 
-  const httpServer = createServer(app);
-  return httpServer;
+  return createServer(app);
 }
