@@ -67,8 +67,8 @@ async function processPendingDocuments() {
       });
 
       // RAG indexing is optional at processing time so OCR still works when
-      // an LLM API key is not configured.
-      if (process.env.OPENAI_API_KEY && extractedText.trim()) {
+      // Gemini is not configured.
+      if (process.env.GEMINI_API_KEY && extractedText.trim()) {
         try {
           const result = await indexDocument(doc.id, extractedText);
           console.log(`[worker] Indexed ${result.chunks} chunks for document ${doc.id}`);
