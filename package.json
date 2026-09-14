@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "type": "module",
   "license": "MIT",
+  "engines": {
+    "node": "24.x"
+  },
   "scripts": {
     "dev": "tsx server/index.ts",
     "frontend": "vite",
@@ -49,9 +52,9 @@
     "connect-pg-simple": "^10.0.0",
     "cors": "^2.8.5",
     "date-fns": "^3.6.0",
+    "dotenv": "^17.2.2",
     "drizzle-orm": "^0.39.1",
     "drizzle-zod": "^0.7.0",
-    "dotenv": "^17.2.2",
     "embla-carousel-react": "^8.6.0",
     "express": "^4.21.2",
     "express-session": "^1.18.1",
@@ -101,8 +104,6 @@
     "@types/node": "20.16.11",
     "@types/passport": "^1.0.16",
     "@types/passport-local": "^1.0.38",
-    "@types/pdfjs-dist": "^2.10.377",
-    "@types/pg": "^8.15.4",
     "@types/react": "^18.3.11",
     "@types/react-dom": "^18.3.1",
     "@types/ws": "^8.5.13",
