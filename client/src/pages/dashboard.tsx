@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ScanText, Bell, Search, X } from "lucide-react";
+import { ScanText, Bell, Search, X, Plus, Download } from "lucide-react";
 import FileUpload from "@/components/file-upload";
 import DocumentList from "@/components/document-list";
 import DocumentPreviewModal from "@/components/document-preview-modal";
@@ -44,6 +44,29 @@ export default function Dashboard() {
   const clearSearch = () => {
     setSearchParams({});
     setSearchQuery("");
+  };
+
+  const scrollToUpload = () => {
+    document.getElementById("file-upload-section")?.scrollIntoView({ behavior: "smooth", block: "center" });
+  };
+
+  const exportData = async () => {
+    try {
+      const response = await fetch("/api/documents");
+      if (!response.ok) throw new Error("Failed to fetch documents");
+      const documents = await response.json();
+      const blob = new Blob([JSON.stringify(documents, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `documents_export_${new Date().toISOString().split("T")[0]}.json`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error("Export failed:", error);
+    }
   };
 
   return (
@@ -129,13 +152,9 @@ export default function Dashboard() {
                     <CardTitle className="text-lg font-semibold flex items-center gap-2">
                       <Search className="text-primary" size={20} />
                       Search Results
-                      {!isSearching && (
-                        <Badge variant="secondary">{searchResults.length} found</Badge>
-                      )}
+                      {!isSearching && <Badge variant="secondary">{searchResults.length} found</Badge>}
                     </CardTitle>
-                    <Button variant="outline" size="sm" onClick={clearSearch}>
-                      Clear Search
-                    </Button>
+                    <Button variant="outline" size="sm" onClick={clearSearch}>Clear Search</Button>
                   </div>
                 </CardHeader>
                 <CardContent className="p-6">
@@ -164,9 +183,7 @@ export default function Dashboard() {
                             <h3 className="font-medium text-gray-900 truncate flex-1">
                               {document.title || document.originalName}
                             </h3>
-                            <Badge variant="outline" className="ml-2 text-xs">
-                              {document.fileType}
-                            </Badge>
+                            <Badge variant="outline" className="ml-2 text-xs">{document.fileType}</Badge>
                           </div>
                           {document.extractedText && (
                             <p className="text-sm text-gray-600 line-clamp-3 mb-2">
@@ -194,7 +211,30 @@ export default function Dashboard() {
             )}
           </div>
 
-          <div className="md:col-span-1">
+          <div className="md:col-span-1 space-y-6">
+            <Card className="shadow-lg">
+              <CardHeader>
+                <CardTitle className="text-lg font-semibold">Quick Actions</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <Button
+                  className="w-full justify-start bg-blue-50 text-primary hover:bg-blue-100"
+                  variant="ghost"
+                  onClick={scrollToUpload}
+                >
+                  <Plus className="mr-3" size={16} />
+                  Upload Documents
+                </Button>
+                <Button
+                  className="w-full justify-start bg-gray-50 text-gray-700 hover:bg-gray-100"
+                  variant="ghost"
+                  onClick={exportData}
+                >
+                  <Download className="mr-3" size={16} />
+                  Export Data
+                </Button>
+              </CardContent>
+            </Card>
             <ProcessingQueue />
           </div>
         </div>
