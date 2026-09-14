@@ -10,7 +10,7 @@ A full-stack document intelligence application for uploading PDF/images, extract
 - PDF.js text extraction for text-based PDFs
 - Rule-based document classification and entity extraction
 - PostgreSQL document metadata and structured OCR storage
-- Semantic document indexing with OpenAI embeddings
+- Semantic document indexing with Gemini embeddings
 - PostgreSQL + pgvector similarity search
 - RAG-based document Q&A with retrieved source chunks
 - React/TypeScript dashboard and analytics
@@ -34,13 +34,13 @@ PostgreSQL          Background Worker
                          |
                       Chunking
                          |
-                    Embeddings
+                Gemini Embeddings
                          |
                   PostgreSQL/pgvector
                          |
                     Similarity Search
                          |
-                        LLM
+                  Gemini Flash-Lite
                          |
                   Grounded Answer
 ```
@@ -51,7 +51,7 @@ PostgreSQL          Background Worker
 
 **Backend:** Node.js, Express.js, TypeScript, Multer, Zod
 
-**Document AI:** Tesseract.js, PDF.js, OpenAI embeddings, RAG
+**Document AI:** Tesseract.js, PDF.js, Gemini API, RAG
 
 **Storage:** PostgreSQL, pgvector
 
@@ -61,19 +61,18 @@ PostgreSQL          Background Worker
 
 - Node.js 18+
 - PostgreSQL with the `vector` extension (Neon and other managed PostgreSQL providers commonly support pgvector)
-- OpenAI API key for semantic indexing and Q&A
+- Gemini API key from Google AI Studio
 
 ### Environment variables
 
 ```env
 DATABASE_URL=postgresql://...
-OPENAI_API_KEY=...
-EMBEDDING_MODEL=text-embedding-3-small
-CHAT_MODEL=gpt-4o-mini
+GEMINI_API_KEY=...
+CHAT_MODEL=gemini-2.5-flash-lite
 NODE_ENV=development
 ```
 
-The application automatically creates the `document_chunks` table and enables pgvector on startup when the database user has permission to install extensions.
+The application creates the `document_chunks` table and enables pgvector on startup when the database user has permission to install extensions. The embedding model is `gemini-embedding-001` with 1536-dimensional vectors, matching the PostgreSQL `vector(1536)` column.
 
 ### Run
 
@@ -93,12 +92,14 @@ The command starts the API server, frontend development server, and document wor
 2. The background worker extracts text using Tesseract.js or PDF.js.
 3. Extracted text is cleaned and structured.
 4. The text is split into overlapping chunks.
-5. Each chunk is converted into an embedding using `text-embedding-3-small`.
-6. Embeddings are stored in PostgreSQL using pgvector.
-7. A user question is embedded using the same model.
+5. Each chunk is converted into a 1536-dimensional Gemini embedding.
+6. Embeddings are normalized and stored in PostgreSQL using pgvector.
+7. A user question is embedded using the same Gemini embedding model.
 8. pgvector returns the most similar document chunks.
-9. The retrieved chunks are supplied to the LLM as context.
+9. The retrieved chunks are supplied to Gemini as context.
 10. The assistant answers using only the retrieved context and returns the source chunks used.
+
+The project uses the Gemini Developer API's free tier for small demos and presentations; free-tier limits are subject to Google's current quotas and model availability.
 
 ## API
 
@@ -124,7 +125,7 @@ document-scanner-pro/
 ├── server/
 │   ├── routes.ts                   # Core REST API
 │   ├── ai-routes.ts                # Semantic search + RAG endpoints
-│   ├── rag.ts                      # Chunking, embeddings and RAG
+│   ├── rag.ts                      # Chunking, Gemini embeddings and RAG
 │   ├── ai-setup.ts                 # pgvector setup
 │   ├── pg-storage.ts               # PostgreSQL access
 │   ├── text-processor.ts           # OCR text processing/classification
