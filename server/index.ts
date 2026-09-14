@@ -6,7 +6,10 @@ import { setupAiStorage } from "./ai-setup";
 import { setupVite, serveStatic, log } from "./vite";
 
 const app = express();
-app.use(cors({ origin: "http://localhost:5173", credentials: true }));
+app.use(cors({
+  origin: process.env.CLIENT_URL || true,
+  credentials: true,
+}));
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
@@ -33,12 +36,9 @@ app.use((req, res, next) => {
   try {
     await setupAiStorage();
   } catch (error) {
-    // Keep the core scanner usable on PostgreSQL installations without pgvector.
-    // RAG endpoints will report a clear database/API configuration error.
     console.warn("[ai] pgvector setup unavailable:", error instanceof Error ? error.message : error);
   }
 
-  // AI routes must be registered before /api/documents/:id in the legacy router.
   app.use(aiRouter);
   const server = await registerRoutes(app);
 
@@ -50,7 +50,8 @@ app.use((req, res, next) => {
   if (app.get("env") === "development") await setupVite(app, server);
   else serveStatic(app);
 
-  server.listen(5000, "localhost", () => {
-    console.log("Server is running on http://localhost:5000");
+  const port = Number(process.env.PORT) || 5000;
+  server.listen(port, "0.0.0.0", () => {
+    console.log(`Server is running on port ${port}`);
   });
 })();
