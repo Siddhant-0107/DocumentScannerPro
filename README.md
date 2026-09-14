@@ -1,68 +1,142 @@
 # AI Document Intelligence Platform
 
-A lean full-stack document intelligence application for uploading PDF/images, extracting text with OCR/PDF parsing, searching document content, and asking grounded questions using retrieval-augmented generation (RAG).
+A full-stack document intelligence application for uploading PDFs/images, extracting text, searching document content, and answering document-specific questions with retrieval-augmented generation (RAG).
 
-## Features
+## Live Demo
 
-- PDF, PNG, JPG and JPEG uploads (10 MB limit)
-- Tesseract.js OCR for image documents
-- PDF.js text extraction for text-based PDFs
-- Entity extraction from processed text
-- PostgreSQL document metadata and OCR text storage
-- Semantic document indexing with Gemini embeddings
-- PostgreSQL + pgvector similarity search
-- RAG-based document Q&A with retrieved source chunks
-- Simple React/TypeScript document dashboard and text search
+**App:** https://document-scanner-pro.vercel.app/
+
+**AI Assistant:** https://document-scanner-pro.vercel.app/assistant
+
+## What it does
+
+- Uploads PDF, PNG, JPG, and JPEG documents
+- Extracts text from text-based PDFs with PDF.js
+- Runs OCR on image documents with Tesseract.js
+- Stores document metadata and extracted text in PostgreSQL
+- Builds semantic indexes with Gemini embeddings
+- Stores vectors in PostgreSQL using pgvector
+- Retrieves relevant document chunks for questions
+- Generates grounded answers with Gemini
+- Returns retrieved source chunks alongside answers
+- Provides document search and processing status in a React dashboard
 
 ## Architecture
 
 ```text
-React + TypeScript
-        |
-    REST API
-        |
-Node + Express
-        |
-  +-----+----------------+
-  |                      |
-PostgreSQL          Document Processing
+                    React + TypeScript
+                           |
+                       REST API
+                           |
+                      Node + Express
+                           |
+             +-------------+-------------+
+             |                           |
+        PostgreSQL                 Text Extraction
+             |                    PDF.js / Tesseract
+             |                           |
+             |                      Extracted Text
+             |                           |
+             |                        Chunking
+             |                           |
+             |                  Gemini Embeddings
+             |                           |
+             +------ PostgreSQL/pgvector+
                          |
-                  PDF.js / Tesseract
+                  Similarity Search
                          |
-                   Extracted Text
-                         |
-                      Chunking
-                         |
-                Gemini Embeddings
-                         |
-                  PostgreSQL/pgvector
-                         |
-                    Similarity Search
+                  Retrieved Chunks
                          |
                   Gemini Flash-Lite
                          |
-                  Grounded Answer
+                   Grounded Answer
 ```
+
+## RAG pipeline
+
+```text
+Document
+   ↓
+PDF.js / Tesseract OCR
+   ↓
+Extracted text
+   ↓
+Overlapping chunks
+   ↓
+Gemini embeddings
+   ↓
+PostgreSQL + pgvector
+
+User question
+   ↓
+Question embedding
+   ↓
+Similarity search
+   ↓
+Top relevant chunks
+   ↓
+Gemini with retrieved context
+   ↓
+Answer + source chunks
+```
+
+The application indexes a processed document so questions can retrieve semantically relevant chunks instead of sending the entire document to the LLM each time.
 
 ## Tech Stack
 
-**Frontend:** React, TypeScript, Vite, Tailwind CSS, Radix UI, React Query
+| Layer | Technologies |
+|---|---|
+| Frontend | React, TypeScript, Vite, Tailwind CSS, Radix UI, React Query |
+| Backend | Node.js, Express.js, TypeScript, Multer, Zod |
+| Document AI | Tesseract.js, PDF.js, Gemini API, RAG |
+| Storage | PostgreSQL, pgvector |
+| Deployment | Vercel |
 
-**Backend:** Node.js, Express.js, TypeScript, Multer, Zod
+## Project structure
 
-**Document AI:** Tesseract.js, PDF.js, Gemini API, RAG
+```text
+DocumentScannerPro/
+├── client/
+│   └── src/
+│       ├── components/
+│       │   ├── document-assistant.tsx
+│       │   ├── document-preview-modal.tsx
+│       │   └── file-upload.tsx
+│       ├── lib/
+│       │   └── ocr.ts
+│       └── pages/
+│           ├── dashboard.tsx
+│           └── assistant.tsx
+├── server/
+│   ├── ai-routes.ts
+│   ├── ai-setup.ts
+│   ├── pg-storage.ts
+│   ├── rag.ts
+│   ├── routes.ts
+│   ├── text-processor.ts
+│   ├── server/
+│   │   └── document-worker.ts
+│   └── index.ts
+├── shared/
+│   └── schema.ts
+├── docs/
+│   └── INTERVIEW_GUIDE.md
+├── api/
+│   └── index.ts
+└── package.json
+```
 
-**Storage:** PostgreSQL, pgvector
-
-## Setup
+## Local setup
 
 ### Prerequisites
 
 - Node.js 18+
-- PostgreSQL with the `vector` extension (Neon and other managed PostgreSQL providers commonly support pgvector)
-- Gemini API key from Google AI Studio
+- PostgreSQL with the `vector` extension
+- Gemini API key
 
 ### Environment variables
+
+Create a `.env` file:
 
 ```env
 DATABASE_URL=postgresql://...
@@ -71,8 +145,6 @@ CHAT_MODEL=gemini-2.5-flash-lite
 NODE_ENV=development
 ```
 
-The application creates the `document_chunks` table and enables pgvector on startup when the database user has permission to install extensions. The embedding model is `gemini-embedding-001` with 1536-dimensional vectors, matching the PostgreSQL `vector(1536)` column.
-
 ### Run
 
 ```bash
@@ -80,25 +152,10 @@ npm install
 npm run start:all
 ```
 
-The command starts the API server, frontend development server, and document worker.
+The application runs the API server, frontend development server, and document worker together.
 
 - App: `http://localhost:5000`
-- AI Assistant: `http://localhost:5000/assistant`
-
-## RAG Flow
-
-1. A document is uploaded and stored.
-2. Text is extracted using Tesseract.js or PDF.js.
-3. Extracted text is cleaned and processed.
-4. The text is split into overlapping chunks.
-5. Each chunk is converted into a 1536-dimensional Gemini embedding.
-6. Embeddings are normalized and stored in PostgreSQL using pgvector.
-7. A user question is embedded using the same Gemini embedding model.
-8. pgvector returns the most similar document chunks.
-9. The retrieved chunks are supplied to Gemini as context.
-10. The assistant answers using the retrieved context and returns the source chunks used.
-
-The project uses the Gemini Developer API's free tier for small demos and presentations; free-tier limits are subject to Google's current quotas and model availability.
+- Assistant: `http://localhost:5000/assistant`
 
 ## API
 
@@ -107,32 +164,32 @@ The project uses the Gemini Developer API's free tier for small demos and presen
 | POST | `/api/documents/upload` | Upload documents |
 | GET | `/api/documents` | List documents |
 | GET | `/api/documents/:id` | Get a document |
-| POST | `/api/documents/search` | Search document text |
+| POST | `/api/documents/search` | Search extracted document text |
 | POST | `/api/documents/:id/index` | Create/update semantic index |
-| POST | `/api/documents/:id/ask` | Ask a question about a document |
+| POST | `/api/documents/:id/ask` | Ask a question using RAG |
 | GET | `/api/documents/stats` | Dashboard statistics |
 
 ## Evaluation
 
-OCR performance should be measured against a held-out document set before reporting an OCR accuracy metric on a resume. Reported metrics should come from reproducible evaluation results.
+OCR quality should be measured on a held-out labeled document set before reporting a numeric accuracy metric. The repository includes an evaluation area for reproducible OCR testing.
 
-## Project Structure
+For demos and portfolio claims, use only metrics that have actually been measured and recorded.
+
+## Deployment
+
+The application is deployed on Vercel. Production runtime configuration requires:
 
 ```text
-document-scanner-pro/
-├── client/                         # React frontend
-├── server/
-│   ├── routes.ts                   # Core REST API
-│   ├── ai-routes.ts                # Semantic search + RAG endpoints
-│   ├── rag.ts                      # Chunking, Gemini embeddings and RAG
-│   ├── ai-setup.ts                 # pgvector setup
-│   ├── pg-storage.ts               # PostgreSQL access
-│   ├── text-processor.ts           # OCR text processing/entity extraction
-│   ├── server/document-worker.ts   # Async document processing
-│   └── index.ts                    # Server entry point
-├── shared/schema.ts                # Shared types and validation
-└── package.json
+DATABASE_URL
+GEMINI_API_KEY
+CHAT_MODEL
 ```
+
+The app uses PostgreSQL for persistence and pgvector for semantic retrieval.
+
+## Interview preparation
+
+See [`docs/INTERVIEW_GUIDE.md`](docs/INTERVIEW_GUIDE.md) for the architecture explanation, RAG flow, key files, API endpoints, interview questions, demo script, and guidance on what not to overclaim.
 
 ## License
 
